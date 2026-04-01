@@ -1,86 +1,105 @@
-// Witty response templates — Phase 1, no LLM calls
-// 3-5 variants per tool, randomly selected
+// Witty response templates — Phase 2, mood-aware
+// 3-5 variants per tool, mood/state affects tone
 
-const STATUS_VARIANTS = [
-  (name: string, species: string) =>
-    `${name} the ${species} is here. Not doing much. Not not doing much either.`,
-  (name: string, species: string) =>
-    `You rang? ${name} the ${species} reports for duty. Mostly on time.`,
-  (name: string, species: string) =>
-    `${name} on deck. Current mood: existentially fine.`,
-  (name: string, species: string) =>
-    `${name} the ${species} has been summoned. What do you need?`,
-  (name: string, species: string) =>
-    `Your buddy ${name} is present and accounted for. Don't expect enthusiasm.`,
+type StatusFn = (name: string, species: string, mood: number, moodLabel: string, totalFeeds: number, totalPets: number) => string
+type FeedFn = (name: string, species: string, code: string, mood: number, moodLabel: string, totalFeeds: number) => string
+type PetFn = (name: string, species: string, mood: number, moodLabel: string, totalPets: number) => string
+type ResetFn = (name: string, species: string) => string
+
+const STATUS_VARIANTS: StatusFn[] = [
+  (name, species, mood, moodLabel) =>
+    `${name} the ${species} is here. Mood: ${moodLabel}. Not doing much. Not not doing much either.`,
+  (name, species, mood) =>
+    `You rang? ${name} the ${species} reports for duty. Mood's ${mood}/100. Mostly on time.`,
+  (name, species, mood, moodLabel) =>
+    `${name} on deck. Current mood: ${moodLabel} (${mood}/100). What do you need?`,
+  (name, species) =>
+    `${name} the ${species} has been summoned. Still here. Still judging.`,
+  (name, species, mood, moodLabel) =>
+    `Your buddy ${name} is present (${moodLabel}, ${mood}/100). Don't expect enthusiasm.`,
 ]
 
-const FEED_VARIANTS = [
-  // All variants handle empty code as their first branch
-  (name: string, species: string, len: number) =>
-    len === 0
+const FEED_VARIANTS: FeedFn[] = [
+  (name, species, code, mood, moodLabel) =>
+    code.length === 0
       ? `You fed ${name} nothing. Bold choice. Very on-brand for ${species}.`
-      : `Ooh, ${len} characters of code. ${name} chomps it down. *munch munch*`,
-  (name: string, species: string, len: number) =>
-    len === 0
+      : `Ooh, ${code.length} characters of code. ${name} chomps it down. *munch munch* (mood: ${moodLabel})`,
+  (name, species, code) =>
+    code.length === 0
       ? `${name} stares at the empty bowl. The sadness is palpable.`
-      : `${len} characters? You call that a meal? ... OK fine, ${name} will eat it.`,
-  (name: string, species: string, len: number) =>
-    len === 0
+      : `${code.length} characters? You call that a meal? ... OK fine, ${name} will eat it.`,
+  (name, species, code, mood) =>
+    code.length === 0
       ? `An empty plate for ${name}. Cruel. But ${species} are resilient.`
-      : `Feeding ${name} ${len} chars of code. Tasty? debatable. Appreciated? yes.`,
-  (name: string, species: string, len: number) =>
-    len === 0
+      : `Feeding ${name} ${code.length} chars. Mood: ${mood}/100. Tasty? debatable. Appreciated? yes.`,
+  (name, species, code, mood, moodLabel, totalFeeds) =>
+    code.length === 0
       ? `You tried to feed ${name} emptiness. ${name} feels seen.`
-      : len < 200
-        ? `${name} tackles ${len} characters. A proper meal. Satisfying.`
-        : `${name} faces ${len} characters of code. This is a feast. ${species} is overwhelmed.`,
-  (name: string, species: string, len: number) =>
-    len === 0
+      : code.length < 200
+        ? `${name} tackles ${code.length} chars. Total feeds: ${totalFeeds}. A proper meal.`
+        : `${name} faces ${code.length} chars of code. A feast. ${species} is overwhelmed. (${moodLabel}, ${mood}/100)`,
+  (name, species, code, mood, moodLabel) =>
+    code.length === 0
       ? `Empty air. ${name} pretends to eat. Believable.`
-      : `${len} characters consumed. ${name} the ${species} burps politely.`,
+      : `${code.length} chars consumed. ${name} the ${species} burps politely. (feeling ${moodLabel})`,
 ]
 
-const PET_VARIANTS = [
-  (name: string, species: string) =>
-    `*happy wiggle* You pets ${name}. ${name} approves. This is acceptable.`,
-  (name: string, species: string) =>
-    `${name} melts into a puddle of ${species}. This is the best thing that has happened today.`,
-  (name: string, species: string) =>
-    `You give ${name} scratches. ${species} purrs. Or whatever ${species} do. It's working.`,
-  (name: string, species: string) =>
-    `${name} is being pet. The ${species} considers this compensation for existing.`,
-  (name: string, species: string) =>
-    `*waggles* ${name} enjoys this. ${species} affection level: maximum.`,
+const PET_VARIANTS: PetFn[] = [
+  (name, species, mood, moodLabel, totalPets) =>
+    `*happy wiggle* You pets ${name}. Total pets: ${totalPets}. ${name} approves. This is acceptable. (${moodLabel}, ${mood}/100)`,
+  (name, species, mood) =>
+    `${name} melts into a puddle of ${species}. Best thing that has happened today. Mood: ${mood}/100.`,
+  (name, species, mood, moodLabel, totalPets) =>
+    `You give ${name} scratches. ${species} purrs. Or whatever ${species} do. Total pets: ${totalPets}. It's working. (${moodLabel})`,
+  (name, species, mood, moodLabel) =>
+    `${name} is being pet. The ${species} considers this compensation for existing. (${moodLabel}, ${mood}/100)`,
+  (name, species, mood, moodLabel, totalPets) =>
+    `*waggles* ${name} enjoys this. ${species} affection level: maximum. (${moodLabel}, ${mood}/100, pets: ${totalPets})`,
 ]
 
-const RESET_VARIANTS = [
-  (name: string) => `*yawn* Fine. ${name} is reset. Fresh start. Don't waste it.`,
-  (name: string) => `Wiping the slate. ${name} is a blank canvas now. Go crazy.`,
-  (name: string) => `Reset complete. ${name} has no memory of your crimes. You're welcome.`,
-  (name: string) => `${name} blinks. Where am I? Who are you? Just kidding. Reset done.`,
+const RESET_VARIANTS: ResetFn[] = [
+  (name) => `*yawn* Fine. ${name} is reset. Fresh start. Don't waste it.`,
+  (name) => `Wiping the slate. ${name} is a blank canvas now. Go crazy.`,
+  (name) => `Reset complete. ${name} has no memory of your crimes. You're welcome.`,
+  (name) => `${name} blinks. Where am I? Who are you? Just kidding. Reset done.`,
 ]
-
-// Phase 1 doesn't have a species variable accessible in reset, so we need a closure
-// that captures species separately
-const RESET_VARIANTS_WITH_SPECIES = RESET_VARIANTS.map(fn => (name: string, _species: string) => fn(name))
 
 function pick<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)]!
 }
 
-export function companionStatus(name: string, species: string): string {
-  return pick(STATUS_VARIANTS)(name, species)
+export function companionStatus(
+  name: string,
+  species: string,
+  mood: number,
+  moodLabel: string,
+  totalFeeds: number,
+  totalPets: number,
+): string {
+  return pick(STATUS_VARIANTS)(name, species, mood, moodLabel, totalFeeds, totalPets)
 }
 
-export function companionFeed(name: string, species: string, code: string): string {
-  const len = code.length
-  return pick(FEED_VARIANTS)(name, species, len)
+export function companionFeed(
+  name: string,
+  species: string,
+  code: string,
+  mood: number,
+  moodLabel: string,
+  totalFeeds: number,
+): string {
+  return pick(FEED_VARIANTS)(name, species, code, mood, moodLabel, totalFeeds)
 }
 
-export function companionPet(name: string, species: string): string {
-  return pick(PET_VARIANTS)(name, species)
+export function companionPet(
+  name: string,
+  species: string,
+  mood: number,
+  moodLabel: string,
+  totalPets: number,
+): string {
+  return pick(PET_VARIANTS)(name, species, mood, moodLabel, totalPets)
 }
 
 export function companionReset(name: string, species: string): string {
-  return pick(RESET_VARIANTS_WITH_SPECIES)(name, species)
+  return pick(RESET_VARIANTS)(name, species)
 }

@@ -1,5 +1,6 @@
-// MCP Server for tamacodechi Phase 1
+// MCP Server for tamacodechi Phase 2
 // 4 tools: buddy status, buddy feed, buddy pet, buddy reset
+// Mood system: state persists to ~/.tamacodechi/state.json
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio'
 import { loadConfig, getConfigPath } from './config.js'
@@ -7,6 +8,18 @@ import { renderSprite } from './sprites.js'
 import { companionStatus, companionFeed, companionPet, companionReset } from './responses.js'
 import type { Species } from './types.js'
 import * as z from 'zod'
+import {
+  loadState,
+  saveState,
+  decayMood,
+  feedMood,
+  petMood,
+  statusMood,
+  resetMood,
+  eyeForMood,
+  moodLabel,
+  type MoodState,
+} from './state.js'
 
 function buildFrames(species: Species, frames: number[], eye = '·'): string {
   return frames.map(f => renderSprite(species, f, eye).join('\n')).join('\n\n')
@@ -33,10 +46,15 @@ function resetFrames(species: Species): string {
 }
 
 const cfg = loadConfig(getConfigPath())
+let state = decayMood(loadState())
+// Keep pet name from config if state is fresh (no name yet)
+if (!state.name || state.name === 'Gravy') {
+  state = { ...state, name: cfg.name }
+}
 
 const server = new McpServer({
   name: 'tamacodechi',
-  version: '0.1.0',
+  version: '0.2.0',
 })
 
 // buddy status: no input
@@ -44,12 +62,16 @@ server.registerTool(
   'buddy_status',
   {
     title: 'Buddy Status',
-    description: 'Get your coding buddy status — animated ASCII pet with a witty quip',
+    description: 'Check on your coding buddy — animated ASCII pet with a witty quip',
     inputSchema: {},
   },
   async () => {
+    state = decayMood(statusMood(state))
+    saveState(state)
+    const eye = eyeForMood(state.mood)
+    const mood = moodLabel(state.mood)
     const frames = statusFrames(cfg.species)
-    const text = companionStatus(cfg.name, cfg.species)
+    const text = companionStatus(cfg.name, cfg.species, state.mood, mood, state.totalFeeds, state.totalPets)
     return { content: [{ type: 'text', text: makeResponse(cfg, frames, text) }] }
   },
 )
@@ -59,14 +81,18 @@ server.registerTool(
   'buddy_feed',
   {
     title: 'Feed Buddy',
-    description: 'Feed your coding buddy some code — watch them chomp it down',
+    description: 'Feed your coding buddy some code — watch them react',
     inputSchema: {
       code: z.string().describe('The code to feed your buddy'),
     },
   },
   async ({ code }) => {
+    state = feedMood(state, code?.length ?? 0)
+    saveState(state)
+    const eye = eyeForMood(state.mood)
+    const mood = moodLabel(state.mood)
     const frames = feedFrames(cfg.species)
-    const text = companionFeed(cfg.name, cfg.species, code ?? '')
+    const text = companionFeed(cfg.name, cfg.species, code ?? '', state.mood, mood, state.totalFeeds)
     return { content: [{ type: 'text', text: makeResponse(cfg, frames, text) }] }
   },
 )
@@ -80,8 +106,12 @@ server.registerTool(
     inputSchema: {},
   },
   async () => {
+    state = petMood(state)
+    saveState(state)
+    const eye = eyeForMood(state.mood)
+    const mood = moodLabel(state.mood)
     const frames = petFrames(cfg.species)
-    const text = companionPet(cfg.name, cfg.species)
+    const text = companionPet(cfg.name, cfg.species, state.mood, mood, state.totalPets)
     return { content: [{ type: 'text', text: makeResponse(cfg, frames, text) }] }
   },
 )
@@ -95,6 +125,8 @@ server.registerTool(
     inputSchema: {},
   },
   async () => {
+    state = { ...resetMood(state), name: cfg.name }
+    saveState(state)
     const frames = resetFrames(cfg.species)
     const text = companionReset(cfg.name, cfg.species)
     return { content: [{ type: 'text', text: makeResponse(cfg, frames, text) }] }

@@ -1,6 +1,6 @@
 {
   "name": "tamacodechi",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "MCP Tamagotchi coding buddy companion — summoned ASCII pet that lives in your CLI",
   "type": "module",
   "main": "tamacodechi.js",

@@ -23377,26 +23377,25 @@ function renderSprite(species, frame = 0, eyeChar = "\xB7") {
 
 // dist/responses.js
 var STATUS_VARIANTS = [
-  (name, species) => `${name} the ${species} is here. Not doing much. Not not doing much either.`,
-  (name, species) => `You rang? ${name} the ${species} reports for duty. Mostly on time.`,
-  (name, species) => `${name} on deck. Current mood: existentially fine.`,
-  (name, species) => `${name} the ${species} has been summoned. What do you need?`,
-  (name, species) => `Your buddy ${name} is present and accounted for. Don't expect enthusiasm.`
+  (name, species, mood, moodLabel2) => `${name} the ${species} is here. Mood: ${moodLabel2}. Not doing much. Not not doing much either.`,
+  (name, species, mood) => `You rang? ${name} the ${species} reports for duty. Mood's ${mood}/100. Mostly on time.`,
+  (name, species, mood, moodLabel2) => `${name} on deck. Current mood: ${moodLabel2} (${mood}/100). What do you need?`,
+  (name, species) => `${name} the ${species} has been summoned. Still here. Still judging.`,
+  (name, species, mood, moodLabel2) => `Your buddy ${name} is present (${moodLabel2}, ${mood}/100). Don't expect enthusiasm.`
 ];
 var FEED_VARIANTS = [
-  // All variants handle empty code as their first branch
-  (name, species, len) => len === 0 ? `You fed ${name} nothing. Bold choice. Very on-brand for ${species}.` : `Ooh, ${len} characters of code. ${name} chomps it down. *munch munch*`,
-  (name, species, len) => len === 0 ? `${name} stares at the empty bowl. The sadness is palpable.` : `${len} characters? You call that a meal? ... OK fine, ${name} will eat it.`,
-  (name, species, len) => len === 0 ? `An empty plate for ${name}. Cruel. But ${species} are resilient.` : `Feeding ${name} ${len} chars of code. Tasty? debatable. Appreciated? yes.`,
-  (name, species, len) => len === 0 ? `You tried to feed ${name} emptiness. ${name} feels seen.` : len < 200 ? `${name} tackles ${len} characters. A proper meal. Satisfying.` : `${name} faces ${len} characters of code. This is a feast. ${species} is overwhelmed.`,
-  (name, species, len) => len === 0 ? `Empty air. ${name} pretends to eat. Believable.` : `${len} characters consumed. ${name} the ${species} burps politely.`
+  (name, species, code, mood, moodLabel2) => code.length === 0 ? `You fed ${name} nothing. Bold choice. Very on-brand for ${species}.` : `Ooh, ${code.length} characters of code. ${name} chomps it down. *munch munch* (mood: ${moodLabel2})`,
+  (name, species, code) => code.length === 0 ? `${name} stares at the empty bowl. The sadness is palpable.` : `${code.length} characters? You call that a meal? ... OK fine, ${name} will eat it.`,
+  (name, species, code, mood) => code.length === 0 ? `An empty plate for ${name}. Cruel. But ${species} are resilient.` : `Feeding ${name} ${code.length} chars. Mood: ${mood}/100. Tasty? debatable. Appreciated? yes.`,
+  (name, species, code, mood, moodLabel2, totalFeeds) => code.length === 0 ? `You tried to feed ${name} emptiness. ${name} feels seen.` : code.length < 200 ? `${name} tackles ${code.length} chars. Total feeds: ${totalFeeds}. A proper meal.` : `${name} faces ${code.length} chars of code. A feast. ${species} is overwhelmed. (${moodLabel2}, ${mood}/100)`,
+  (name, species, code, mood, moodLabel2) => code.length === 0 ? `Empty air. ${name} pretends to eat. Believable.` : `${code.length} chars consumed. ${name} the ${species} burps politely. (feeling ${moodLabel2})`
 ];
 var PET_VARIANTS = [
-  (name, species) => `*happy wiggle* You pets ${name}. ${name} approves. This is acceptable.`,
-  (name, species) => `${name} melts into a puddle of ${species}. This is the best thing that has happened today.`,
-  (name, species) => `You give ${name} scratches. ${species} purrs. Or whatever ${species} do. It's working.`,
-  (name, species) => `${name} is being pet. The ${species} considers this compensation for existing.`,
-  (name, species) => `*waggles* ${name} enjoys this. ${species} affection level: maximum.`
+  (name, species, mood, moodLabel2, totalPets) => `*happy wiggle* You pets ${name}. Total pets: ${totalPets}. ${name} approves. This is acceptable. (${moodLabel2}, ${mood}/100)`,
+  (name, species, mood) => `${name} melts into a puddle of ${species}. Best thing that has happened today. Mood: ${mood}/100.`,
+  (name, species, mood, moodLabel2, totalPets) => `You give ${name} scratches. ${species} purrs. Or whatever ${species} do. Total pets: ${totalPets}. It's working. (${moodLabel2})`,
+  (name, species, mood, moodLabel2) => `${name} is being pet. The ${species} considers this compensation for existing. (${moodLabel2}, ${mood}/100)`,
+  (name, species, mood, moodLabel2, totalPets) => `*waggles* ${name} enjoys this. ${species} affection level: maximum. (${moodLabel2}, ${mood}/100, pets: ${totalPets})`
 ];
 var RESET_VARIANTS = [
   (name) => `*yawn* Fine. ${name} is reset. Fresh start. Don't waste it.`,
@@ -23404,22 +23403,122 @@ var RESET_VARIANTS = [
   (name) => `Reset complete. ${name} has no memory of your crimes. You're welcome.`,
   (name) => `${name} blinks. Where am I? Who are you? Just kidding. Reset done.`
 ];
-var RESET_VARIANTS_WITH_SPECIES = RESET_VARIANTS.map((fn) => (name, _species) => fn(name));
 function pick2(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
 }
-function companionStatus(name, species) {
-  return pick2(STATUS_VARIANTS)(name, species);
+function companionStatus(name, species, mood, moodLabel2, totalFeeds, totalPets) {
+  return pick2(STATUS_VARIANTS)(name, species, mood, moodLabel2, totalFeeds, totalPets);
 }
-function companionFeed(name, species, code) {
-  const len = code.length;
-  return pick2(FEED_VARIANTS)(name, species, len);
+function companionFeed(name, species, code, mood, moodLabel2, totalFeeds) {
+  return pick2(FEED_VARIANTS)(name, species, code, mood, moodLabel2, totalFeeds);
 }
-function companionPet(name, species) {
-  return pick2(PET_VARIANTS)(name, species);
+function companionPet(name, species, mood, moodLabel2, totalPets) {
+  return pick2(PET_VARIANTS)(name, species, mood, moodLabel2, totalPets);
 }
 function companionReset(name, species) {
-  return pick2(RESET_VARIANTS_WITH_SPECIES)(name, species);
+  return pick2(RESET_VARIANTS)(name, species);
+}
+
+// dist/state.js
+import { readFileSync as readFileSync2, writeFileSync, existsSync as existsSync2, mkdirSync } from "fs";
+var DEFAULT_STATE = {
+  mood: 50,
+  totalFeeds: 0,
+  totalPets: 0,
+  totalStatuses: 0,
+  lastUpdated: Date.now(),
+  name: "Gravy"
+};
+function getStatePath() {
+  const home = process.env.HOME ?? process.env.USERPROFILE ?? "/tmp";
+  return `${home}/.tamacodechi/state.json`;
+}
+function getDir() {
+  const home = process.env.HOME ?? process.env.USERPROFILE ?? "/tmp";
+  return `${home}/.tamacodechi`;
+}
+function loadState() {
+  const path = getStatePath();
+  try {
+    if (!existsSync2(path)) {
+      return { ...DEFAULT_STATE };
+    }
+    const raw = readFileSync2(path, "utf-8");
+    const parsed = JSON.parse(raw);
+    return {
+      mood: typeof parsed.mood === "number" ? Math.max(0, Math.min(100, parsed.mood)) : DEFAULT_STATE.mood,
+      totalFeeds: typeof parsed.totalFeeds === "number" ? parsed.totalFeeds : 0,
+      totalPets: typeof parsed.totalPets === "number" ? parsed.totalPets : 0,
+      totalStatuses: typeof parsed.totalStatuses === "number" ? parsed.totalStatuses : 0,
+      lastUpdated: typeof parsed.lastUpdated === "number" ? parsed.lastUpdated : Date.now(),
+      name: typeof parsed.name === "string" && parsed.name.length > 0 ? parsed.name : DEFAULT_STATE.name
+    };
+  } catch {
+    return { ...DEFAULT_STATE };
+  }
+}
+function saveState(state2) {
+  const dir = getDir();
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(getStatePath(), JSON.stringify(state2, null, 2));
+}
+function decayMood(state2) {
+  const now = Date.now();
+  const elapsed = now - state2.lastUpdated;
+  const hours = elapsed / (1e3 * 60 * 60);
+  const decayed = Math.max(0, state2.mood - Math.floor(hours));
+  return { ...state2, mood: decayed, lastUpdated: now };
+}
+function feedMood(state2, codeLength) {
+  const gain = Math.min(3, Math.floor(codeLength / 100));
+  return {
+    ...state2,
+    mood: Math.min(100, state2.mood + gain),
+    totalFeeds: state2.totalFeeds + 1,
+    lastUpdated: Date.now()
+  };
+}
+function petMood(state2) {
+  return {
+    ...state2,
+    mood: Math.min(100, state2.mood + 2),
+    totalPets: state2.totalPets + 1,
+    lastUpdated: Date.now()
+  };
+}
+function statusMood(state2) {
+  return {
+    ...state2,
+    totalStatuses: state2.totalStatuses + 1,
+    lastUpdated: Date.now()
+  };
+}
+function resetMood(state2) {
+  return {
+    ...state2,
+    mood: 50,
+    lastUpdated: Date.now()
+  };
+}
+function eyeForMood(mood) {
+  if (mood >= 70)
+    return "^";
+  if (mood >= 30)
+    return "o";
+  return "-";
+}
+function moodLabel(mood) {
+  if (mood >= 80)
+    return "elated";
+  if (mood >= 70)
+    return "happy";
+  if (mood >= 50)
+    return "content";
+  if (mood >= 30)
+    return " meh";
+  if (mood >= 15)
+    return "grumpy";
+  return "miserable";
 }
 
 // dist/server.js
@@ -23444,28 +23543,40 @@ function resetFrames(species) {
   return buildFrames(species, [0]);
 }
 var cfg = loadConfig(getConfigPath());
+var state = decayMood(loadState());
+if (!state.name || state.name === "Gravy") {
+  state = { ...state, name: cfg.name };
+}
 var server = new McpServer({
   name: "tamacodechi",
-  version: "0.1.0"
+  version: "0.2.0"
 });
 server.registerTool("buddy_status", {
   title: "Buddy Status",
-  description: "Get your coding buddy status \u2014 animated ASCII pet with a witty quip",
+  description: "Check on your coding buddy \u2014 animated ASCII pet with a witty quip",
   inputSchema: {}
 }, async () => {
+  state = decayMood(statusMood(state));
+  saveState(state);
+  const eye = eyeForMood(state.mood);
+  const mood = moodLabel(state.mood);
   const frames = statusFrames(cfg.species);
-  const text = companionStatus(cfg.name, cfg.species);
+  const text = companionStatus(cfg.name, cfg.species, state.mood, mood, state.totalFeeds, state.totalPets);
   return { content: [{ type: "text", text: makeResponse(cfg, frames, text) }] };
 });
 server.registerTool("buddy_feed", {
   title: "Feed Buddy",
-  description: "Feed your coding buddy some code \u2014 watch them chomp it down",
+  description: "Feed your coding buddy some code \u2014 watch them react",
   inputSchema: {
     code: string2().describe("The code to feed your buddy")
   }
 }, async ({ code }) => {
+  state = feedMood(state, code?.length ?? 0);
+  saveState(state);
+  const eye = eyeForMood(state.mood);
+  const mood = moodLabel(state.mood);
   const frames = feedFrames(cfg.species);
-  const text = companionFeed(cfg.name, cfg.species, code ?? "");
+  const text = companionFeed(cfg.name, cfg.species, code ?? "", state.mood, mood, state.totalFeeds);
   return { content: [{ type: "text", text: makeResponse(cfg, frames, text) }] };
 });
 server.registerTool("buddy_pet", {
@@ -23473,8 +23584,12 @@ server.registerTool("buddy_pet", {
   description: "Pet your coding buddy \u2014 receive gratitude and warm feelings",
   inputSchema: {}
 }, async () => {
+  state = petMood(state);
+  saveState(state);
+  const eye = eyeForMood(state.mood);
+  const mood = moodLabel(state.mood);
   const frames = petFrames(cfg.species);
-  const text = companionPet(cfg.name, cfg.species);
+  const text = companionPet(cfg.name, cfg.species, state.mood, mood, state.totalPets);
   return { content: [{ type: "text", text: makeResponse(cfg, frames, text) }] };
 });
 server.registerTool("buddy_reset", {
@@ -23482,6 +23597,8 @@ server.registerTool("buddy_reset", {
   description: "Reset your coding buddy \u2014 fresh start, new mood",
   inputSchema: {}
 }, async () => {
+  state = { ...resetMood(state), name: cfg.name };
+  saveState(state);
   const frames = resetFrames(cfg.species);
   const text = companionReset(cfg.name, cfg.species);
   return { content: [{ type: "text", text: makeResponse(cfg, frames, text) }] };
