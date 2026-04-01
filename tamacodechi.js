@@ -23221,7 +23221,8 @@ var StdioServerTransport = class {
 };
 
 // dist/config.js
-import { readFileSync, existsSync } from "fs";
+import { readFileSync, existsSync, writeFileSync, mkdirSync } from "fs";
+import { dirname } from "path";
 var DEFAULT_CONFIG = {
   species: "duck",
   name: "Gravy",
@@ -23279,6 +23280,10 @@ function loadConfig(configPath) {
 function getConfigPath() {
   const home = process.env.HOME ?? process.env.USERPROFILE ?? "/tmp";
   return `${home}/.tamacodechi/config.json`;
+}
+function saveConfig(config2, configPath) {
+  mkdirSync(dirname(configPath), { recursive: true });
+  writeFileSync(configPath, JSON.stringify(config2, null, 2), "utf-8");
 }
 
 // dist/sprites.js
@@ -23521,7 +23526,7 @@ function companionReset(name, species) {
 }
 
 // dist/state.js
-import { readFileSync as readFileSync2, writeFileSync, existsSync as existsSync2, mkdirSync } from "fs";
+import { readFileSync as readFileSync2, writeFileSync as writeFileSync2, existsSync as existsSync2, mkdirSync as mkdirSync2 } from "fs";
 var DEFAULT_STATE = {
   mood: 50,
   totalFeeds: 0,
@@ -23560,8 +23565,8 @@ function loadState() {
 }
 function saveState(state2) {
   const dir = getDir();
-  mkdirSync(dir, { recursive: true });
-  writeFileSync(getStatePath(), JSON.stringify(state2, null, 2));
+  mkdirSync2(dir, { recursive: true });
+  writeFileSync2(getStatePath(), JSON.stringify(state2, null, 2));
 }
 function decayMood(state2) {
   const now = Date.now();
@@ -23650,7 +23655,7 @@ if (!state.name || state.name === "Gravy") {
 }
 var server = new McpServer({
   name: "tamacodechi",
-  version: "0.2.0"
+  version: "0.3.0"
 });
 server.registerTool("buddy_status", {
   title: "Buddy Status",
@@ -23703,6 +23708,30 @@ server.registerTool("buddy_reset", {
   const eye = eyeForMood(state.mood);
   const frames = resetFrames(cfg.species, eye, cfg.hat);
   const text = companionReset(cfg.name, cfg.species);
+  return { content: [{ type: "text", text: makeResponse(cfg, frames, text) }] };
+});
+server.registerTool("buddy_customize", {
+  title: "Customize Buddy",
+  description: "Dress up your buddy with a hat and rarity tier",
+  inputSchema: {
+    hat: string2().optional().describe("Hat type: none, crown, tophat, propeller, halo, wizard, beanie, tinyduck"),
+    rarity: string2().optional().describe("Rarity tier: common, uncommon, rare, epic, legendary")
+  }
+}, async ({ hat, rarity }) => {
+  const validHats = ["none", "crown", "tophat", "propeller", "halo", "wizard", "beanie", "tinyduck"];
+  const validRarities = ["common", "uncommon", "rare", "epic", "legendary"];
+  const newHat = hat !== void 0 && validHats.includes(hat) ? hat : cfg.hat;
+  const newRarity = rarity !== void 0 && validRarities.includes(rarity) ? rarity : cfg.rarity;
+  const updatedConfig = { ...cfg, hat: newHat, rarity: newRarity };
+  const configPath = getConfigPath();
+  saveConfig(updatedConfig, configPath);
+  const newCfg = loadConfig(configPath);
+  Object.assign(cfg, newCfg);
+  const eye = eyeForMood(state.mood);
+  const frames = statusFrames(cfg.species, eye, cfg.hat);
+  const rarityStr = cfg.rarity !== "common" ? ` [${cfg.rarity}]` : "";
+  const hatStr = cfg.hat !== "none" ? ` wearing a ${cfg.hat}` : "";
+  const text = `${cfg.name}${hatStr}${rarityStr} is now styled and ready. Hat: ${cfg.hat}, Rarity: ${cfg.rarity}. Looking good!`;
   return { content: [{ type: "text", text: makeResponse(cfg, frames, text) }] };
 });
 var transport = new StdioServerTransport();

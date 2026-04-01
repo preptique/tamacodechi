@@ -1,5 +1,5 @@
 // Config loading — ~/.tamacodechi/config.json with graceful defaults
-import { readFileSync, existsSync } from 'fs'
+import { readFileSync, existsSync, writeFileSync, mkdirSync } from 'fs'
 import { dirname } from 'path'
 import type { BuddyConfig, Species, Hat } from './types.js'
 
@@ -19,6 +19,8 @@ const VALID_SPECIES: readonly string[] = [
 const VALID_HATS: readonly string[] = [
   'none', 'crown', 'tophat', 'propeller', 'halo', 'wizard', 'beanie', 'tinyduck',
 ]
+
+const VALID_RARITIES: readonly string[] = ['common', 'uncommon', 'rare', 'epic', 'legendary']
 
 export function loadConfig(configPath: string): BuddyConfig {
   try {
@@ -42,4 +44,9 @@ export function loadConfig(configPath: string): BuddyConfig {
 export function getConfigPath(): string {
   const home = process.env.HOME ?? process.env.USERPROFILE ?? '/tmp'
   return `${home}/.tamacodechi/config.json`
+}
+
+export function saveConfig(config: BuddyConfig, configPath: string): void {
+  mkdirSync(dirname(configPath), { recursive: true })
+  writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf-8')
 }

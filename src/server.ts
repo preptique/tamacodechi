@@ -3,7 +3,7 @@
 // Mood system: state persists to ~/.tamacodechi/state.json
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio'
-import { loadConfig, getConfigPath } from './config.js'
+import { loadConfig, getConfigPath, saveConfig } from './config.js'
 import { renderSprite } from './sprites.js'
 import { companionStatus, companionFeed, companionPet, companionReset } from './responses.js'
 import type { Species, Hat } from './types.js'
@@ -45,7 +45,7 @@ function resetFrames(species: Species, eye: string, hat: Hat): string {
   return buildFrames(species, [0], eye, hat)
 }
 
-const cfg = loadConfig(getConfigPath())
+let cfg = loadConfig(getConfigPath())
 let state = decayMood(loadState())
 // Keep pet name from config if state is fresh (no name yet)
 if (!state.name || state.name === 'Gravy') {
@@ -130,6 +130,37 @@ server.registerTool(
     const eye = eyeForMood(state.mood)
     const frames = resetFrames(cfg.species, eye, cfg.hat)
     const text = companionReset(cfg.name, cfg.species)
+    return { content: [{ type: 'text', text: makeResponse(cfg, frames, text) }] }
+  },
+)
+
+// buddy customize: optional hat and rarity
+server.registerTool(
+  'buddy_customize',
+  {
+    title: 'Customize Buddy',
+    description: 'Dress up your buddy with a hat and rarity tier',
+    inputSchema: {
+      hat: z.string().optional().describe('Hat type: none, crown, tophat, propeller, halo, wizard, beanie, tinyduck'),
+      rarity: z.string().optional().describe('Rarity tier: common, uncommon, rare, epic, legendary'),
+    },
+  },
+  async ({ hat, rarity }) => {
+    const validHats = ['none', 'crown', 'tophat', 'propeller', 'halo', 'wizard', 'beanie', 'tinyduck']
+    const validRarities = ['common', 'uncommon', 'rare', 'epic', 'legendary']
+    const newHat = hat !== undefined && validHats.includes(hat) ? hat : cfg.hat
+    const newRarity = rarity !== undefined && validRarities.includes(rarity) ? rarity : cfg.rarity
+    const updatedConfig = { ...cfg, hat: newHat as typeof cfg.hat, rarity: newRarity as typeof cfg.rarity }
+    const configPath = getConfigPath()
+    saveConfig(updatedConfig, configPath)
+    // Re-load config so server uses new values
+    const newCfg = loadConfig(configPath)
+    Object.assign(cfg, newCfg)
+    const eye = eyeForMood(state.mood)
+    const frames = statusFrames(cfg.species, eye, cfg.hat)
+    const rarityStr = cfg.rarity !== 'common' ? ` [${cfg.rarity}]` : ''
+    const hatStr = cfg.hat !== 'none' ? ` wearing a ${cfg.hat}` : ''
+    const text = `${cfg.name}${hatStr}${rarityStr} is now styled and ready. Hat: ${cfg.hat}, Rarity: ${cfg.rarity}. Looking good!`
     return { content: [{ type: 'text', text: makeResponse(cfg, frames, text) }] }
   },
 )

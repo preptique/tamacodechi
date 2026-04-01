@@ -1,7 +1,7 @@
 import { test, describe, beforeEach } from 'node:test'
 import assert from 'node:assert'
 import { writeFileSync, unlinkSync, mkdirSync, existsSync } from 'fs'
-import { loadConfig, getConfigPath } from './config.js'
+import { loadConfig, saveConfig, getConfigPath } from './config.js'
 import { dirname } from 'path'
 
 const tmpdir = '/tmp/tamacodechi-test-' + Math.random().toString(36).slice(2)
@@ -84,5 +84,17 @@ describe('config', () => {
       assert(cfg.hat === hat, `hat ${hat}: got ${cfg.hat}`)
       unlinkSync(path)
     }
+  })
+
+  test('saveConfig writes config and loadConfig reads it back', () => {
+    const path = tmpPath('save-test.json')
+    const config = { species: 'cat' as const, name: 'Mittens', rarity: 'epic' as const, hat: 'crown' as const }
+    saveConfig(config, path)
+    const loaded = loadConfig(path)
+    assert(loaded.species === 'cat', `species: got ${loaded.species}`)
+    assert(loaded.name === 'Mittens', `name: got ${loaded.name}`)
+    assert(loaded.rarity === 'epic', `rarity: got ${loaded.rarity}`)
+    assert(loaded.hat === 'crown', `hat: got ${loaded.hat}`)
+    unlinkSync(path)
   })
 })
