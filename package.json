@@ -1,0 +1,23 @@
+{
+  "name": "tamacodechi",
+  "version": "0.1.0",
+  "description": "MCP Tamagotchi coding buddy companion — summoned ASCII pet that lives in your CLI",
+  "type": "module",
+  "main": "tamacodechi.js",
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node --test src/*.test.ts",
+    "prepublish": "npm run build"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.4.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
