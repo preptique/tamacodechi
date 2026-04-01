@@ -23220,7 +23220,7 @@ var StdioServerTransport = class {
   }
 };
 
-// src/config.js
+// dist/config.js
 import { readFileSync, existsSync } from "fs";
 var DEFAULT_CONFIG = {
   species: "duck",
@@ -23271,7 +23271,7 @@ function getConfigPath() {
   return `${home}/.tamacodechi/config.json`;
 }
 
-// src/sprites.js
+// dist/sprites.js
 var BODIES = {
   duck: [
     ["            ", "    __      ", "  <({E} )___  ", "   (  ._>   ", "    `--\xB4    "],
@@ -23375,7 +23375,7 @@ function renderSprite(species, frame = 0, eyeChar = "\xB7") {
   return lines;
 }
 
-// src/responses.js
+// dist/responses.js
 var STATUS_VARIANTS = [
   (name, species) => `${name} the ${species} is here. Not doing much. Not not doing much either.`,
   (name, species) => `You rang? ${name} the ${species} reports for duty. Mostly on time.`,
@@ -23422,7 +23422,7 @@ function companionReset(name, species) {
   return pick2(RESET_VARIANTS_WITH_SPECIES)(name, species);
 }
 
-// src/server.js
+// dist/server.js
 function buildFrames(species, frames, eye = "\xB7") {
   return frames.map((f) => renderSprite(species, f, eye).join("\n")).join("\n\n");
 }

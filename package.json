@@ -9,7 +9,7 @@
   },
   "scripts": {
     "build": "node build.mjs",
-    "test": "node --test src/*.test.ts",
+    "test": "node --test dist/*.test.js",
     "install": "node install.js",
     "prepublish": "npm run build"
   },

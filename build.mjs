@@ -8,7 +8,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 
 // 1. Compile TypeScript to .js files for tests (using tsc)
 console.log('Compiling TypeScript for tests...')
-execSync('npx tsc --outDir src --declaration false --module ESNext --target ES2022 --moduleResolution bundler --noEmit false', {
+execSync('npx tsc --outDir dist --declaration false --module ESNext --target ES2022 --moduleResolution bundler --noEmit false', {
   cwd: __dirname,
   stdio: 'inherit',
 })
@@ -19,7 +19,7 @@ execSync('npx tsc --outDir src --declaration false --module ESNext --target ES20
 console.log('Bundling for distribution...')
 const sdkPath = join(__dirname, 'node_modules/@modelcontextprotocol/sdk/dist/esm')
 await build({
-  entryPoints: ['src/server.js'],
+  entryPoints: ['dist/server.js'],
   bundle: true,
   platform: 'node',
   format: 'esm',
