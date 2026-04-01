@@ -4,9 +4,13 @@
   "description": "MCP Tamagotchi coding buddy companion — summoned ASCII pet that lives in your CLI",
   "type": "module",
   "main": "tamacodechi.js",
+  "bin": {
+    "tamacodechi": "./install.js"
+  },
   "scripts": {
     "build": "node build.mjs",
     "test": "node --test src/*.test.ts",
+    "install": "node install.js",
     "prepublish": "npm run build"
   },
   "dependencies": {

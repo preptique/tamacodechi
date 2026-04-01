@@ -4,19 +4,18 @@ A Tamagotchi-style coding companion that lives in your CLI. Summoned via MCP too
 
 Feed your code to your pet, pet them, check on them. They have opinions about your variable naming.
 
-## Install
+## Install (one command)
 
-### 1. Download the latest release
-
-Download `tamacodechi.js` from the [latest GitHub Release](https://github.com/preptique/tamacodechi/releases/latest).
-
-Or build from source:
 ```bash
-git clone https://github.com/preptique/tamacodechi.git
-cd tamacodechi
-npm install
-npm run build
+npx preptique/tamacodechi install
 ```
+
+That's it. Restart Claude Code and try `/buddy status`.
+
+### What it does
+- Downloads the latest `tamacodechi.js` to `~/.tamacodechi/`
+- Registers it as an MCP server with Claude Code
+- Handles everything automatically
 
 ### 2. Add to Claude Code
 
