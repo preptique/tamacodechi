@@ -4,7 +4,7 @@ A Tamagotchi-style coding companion that lives in your CLI. Summoned via MCP too
 
 Feed your code to your pet, pet them, check on them. They have opinions about your variable naming.
 
-## Install (one command)
+## Install
 
 ```bash
 npx preptique/tamacodechi install
@@ -12,43 +12,16 @@ npx preptique/tamacodechi install
 
 That's it. Restart Claude Code and try `/buddy status`.
 
-### What it does
-- Downloads the latest `tamacodechi.js` to `~/.tamacodechi/`
-- Registers it as an MCP server with Claude Code
-- Handles everything automatically
-
-### 2. Add to Claude Code
-
-Find your `mcp.json`:
-- macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
-- Linux: `~/.config/Claude/claude_desktop_config.json`
-- Windows: `%APPDATA%\Claude\claude_desktop_config.json`
-
-Add to `mcpServers`:
-
-```json
-{
-  "mcpServers": {
-    "tamacodechi": {
-      "command": "node",
-      "args": ["/path/to/tamacodechi.js"]
-    }
-  }
-}
-```
-
-### 3. Restart Claude Code
-
-Your pet is now available as MCP tools.
+The install script downloads the latest `tamacodechi.js`, registers it as an MCP server with Claude Code, and handles everything automatically.
 
 ## Tools
 
 | Tool | Description |
 |------|-------------|
-| `buddy_status` | Check on your pet — gets a witty status quip |
-| `buddy_feed` | Feed your pet some code — watch them react |
-| `buddy_pet` | Pet your pet — receive gratitude |
-| `buddy_reset` | Reset your pet — fresh start |
+| `/buddy status` | Check on your pet — gets a witty status quip |
+| `/buddy feed` | Feed your pet some code — watch them react |
+| `/buddy pet` | Pet your pet — receive gratitude |
+| `/buddy reset` | Reset your pet — fresh start |
 
 ## Customize
 
@@ -66,9 +39,11 @@ Valid species: `duck`, `goose`, `blob`, `cat`, `dragon`, `octopus`, `owl`, `peng
 ## Build from Source
 
 ```bash
+git clone https://github.com/preptique/tamacodechi.git
+cd tamacodechi
 npm install
-npm run build   # produces tamacodechi.js
-npm test       # 22 tests
+npm run build
+npm test
 ```
 
 ## How It Works
@@ -77,6 +52,13 @@ npm test       # 22 tests
 - Template-driven wit — 3-5 response variants per tool, randomly selected
 - ASCII sprite animation — all 18 species with 3 fidget frames each
 - No state persistence in Phase 1 — each call is independent
+
+## Uninstall
+
+```bash
+claude mcp remove tamacodechi -s local
+rm -rf ~/.tamacodechi
+```
 
 ## License
 
