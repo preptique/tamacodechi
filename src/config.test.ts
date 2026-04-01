@@ -66,4 +66,23 @@ describe('config', () => {
     assert(p.includes('.tamacodechi/config.json'), `got: ${p}`)
     assert(p.startsWith('/'), `should be absolute: ${p}`)
   })
+
+  test('invalid hat uses default none', () => {
+    const path = tmpPath('badhat.json')
+    writeFileSync(path, JSON.stringify({ species: 'cat', hat: 'cowboy' }))
+    const cfg = loadConfig(path)
+    assert(cfg.hat === 'none', `invalid hat: got ${cfg.hat}, want none`)
+    unlinkSync(path)
+  })
+
+  test('all valid hats are accepted', () => {
+    const hats = ['none', 'crown', 'tophat', 'propeller', 'halo', 'wizard', 'beanie', 'tinyduck']
+    for (const hat of hats) {
+      const path = tmpPath(`hat-${hat}.json`)
+      writeFileSync(path, JSON.stringify({ name: 'Test', hat }))
+      const cfg = loadConfig(path)
+      assert(cfg.hat === hat, `hat ${hat}: got ${cfg.hat}`)
+      unlinkSync(path)
+    }
+  })
 })

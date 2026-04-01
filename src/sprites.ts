@@ -1,7 +1,7 @@
 // Inline sprite data — copied from src/buddy/sprites.ts BODIES record
 // Each sprite: 5 lines tall, 12 chars wide (after {E} substitution)
 // 3 frames per species for fidget animation
-import type { Species } from './types.js'
+import type { Species, Hat } from './types.js'
 
 type Frame = string[]
 type Frames = Frame[]
@@ -99,14 +99,29 @@ const BODIES: Record<Species, Frames> = {
   ],
 }
 
-export function renderSprite(species: Species, frame = 0, eyeChar = '·'): string[] {
+const HAT_LINES: Record<Hat, string> = {
+  none: '',
+  crown: '   \\^^^/    ',
+  tophat: '   [___]    ',
+  propeller: '    -+-     ',
+  halo: '   (   )    ',
+  wizard: '    /^\\     ',
+  beanie: '   (___)    ',
+  tinyduck: '    ,>      ',
+}
+
+export function renderSprite(species: Species, frame = 0, eyeChar = '·', hat: Hat = 'none'): string[] {
   const frames = BODIES[species]
   if (!frames) return [`unknown species: ${species}`]
   const body = frames[frame % frames.length]!.map(line =>
     line.replaceAll('{E}', eyeChar),
   )
   const lines = [...body]
-  // Drop blank hat slot if all frames have blank line 0 (Phase 1: no hat support)
+  // Apply hat if configured and line 0 is blank
+  if (hat !== 'none' && !lines[0]!.trim()) {
+    lines[0] = HAT_LINES[hat] ?? ''
+  }
+  // Drop blank hat slot if all frames have blank line 0 AND no hat applied
   if (!lines[0]!.trim() && frames.every(f => !f[0]!.trim())) lines.shift()
   return lines
 }

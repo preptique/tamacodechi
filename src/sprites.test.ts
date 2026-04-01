@@ -50,4 +50,20 @@ describe('sprites', () => {
     const frame3 = renderSprite('duck', 3, '·').join('\n')
     assert(frame0 === frame3, 'frame 3 should wrap to frame 0')
   })
+
+  test('hat adds line to sprite when hat is not none', () => {
+    const withoutHat = renderSprite('duck', 0, '·', 'none')
+    const withCrown = renderSprite('duck', 0, '·', 'crown')
+    // Hat adds a line at top, so sprite should be taller with hat
+    assert(withCrown.length > withoutHat.length, `hat sprite has ${withCrown.length} lines, no-hat has ${withoutHat.length}`)
+  })
+
+  test('each hat type renders without error', () => {
+    const hats = ['crown', 'tophat', 'propeller', 'halo', 'wizard', 'beanie', 'tinyduck'] as const
+    for (const hat of hats) {
+      const out = renderSprite('duck', 0, '^', hat)
+      const joined = out.join('')
+      assert(!joined.includes('{E}'), `hat ${hat} leaves placeholder`)
+    }
+  })
 })

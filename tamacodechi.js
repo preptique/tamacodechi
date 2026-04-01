@@ -23248,6 +23248,16 @@ var VALID_SPECIES = [
   "mushroom",
   "chonk"
 ];
+var VALID_HATS = [
+  "none",
+  "crown",
+  "tophat",
+  "propeller",
+  "halo",
+  "wizard",
+  "beanie",
+  "tinyduck"
+];
 function loadConfig(configPath) {
   try {
     if (!existsSync(configPath)) {
@@ -23259,7 +23269,7 @@ function loadConfig(configPath) {
       species: VALID_SPECIES.includes(parsed.species ?? "") ? parsed.species : DEFAULT_CONFIG.species,
       name: typeof parsed.name === "string" && parsed.name.length > 0 ? parsed.name : DEFAULT_CONFIG.name,
       rarity: ["common", "uncommon", "rare", "epic", "legendary"].includes(parsed.rarity ?? "") ? parsed.rarity : DEFAULT_CONFIG.rarity,
-      hat: parsed.hat ?? DEFAULT_CONFIG.hat
+      hat: VALID_HATS.includes(parsed.hat ?? "") ? parsed.hat : DEFAULT_CONFIG.hat
     };
     return cfg2;
   } catch {
@@ -23364,12 +23374,25 @@ var BODIES = {
     ["            ", "  /\\    /\\  ", " ( {E}    {E} ) ", " (   ..   ) ", "  `------\xB4~ "]
   ]
 };
-function renderSprite(species, frame = 0, eyeChar = "\xB7") {
+var HAT_LINES = {
+  none: "",
+  crown: "   \\^^^/    ",
+  tophat: "   [___]    ",
+  propeller: "    -+-     ",
+  halo: "   (   )    ",
+  wizard: "    /^\\     ",
+  beanie: "   (___)    ",
+  tinyduck: "    ,>      "
+};
+function renderSprite(species, frame = 0, eyeChar = "\xB7", hat = "none") {
   const frames = BODIES[species];
   if (!frames)
     return [`unknown species: ${species}`];
   const body = frames[frame % frames.length].map((line) => line.replaceAll("{E}", eyeChar));
   const lines = [...body];
+  if (hat !== "none" && !lines[0].trim()) {
+    lines[0] = HAT_LINES[hat] ?? "";
+  }
   if (!lines[0].trim() && frames.every((f) => !f[0].trim()))
     lines.shift();
   return lines;
@@ -23377,25 +23400,103 @@ function renderSprite(species, frame = 0, eyeChar = "\xB7") {
 
 // dist/responses.js
 var STATUS_VARIANTS = [
-  (name, species, mood, moodLabel2) => `${name} the ${species} is here. Mood: ${moodLabel2}. Not doing much. Not not doing much either.`,
-  (name, species, mood) => `You rang? ${name} the ${species} reports for duty. Mood's ${mood}/100. Mostly on time.`,
-  (name, species, mood, moodLabel2) => `${name} on deck. Current mood: ${moodLabel2} (${mood}/100). What do you need?`,
-  (name, species) => `${name} the ${species} has been summoned. Still here. Still judging.`,
-  (name, species, mood, moodLabel2) => `Your buddy ${name} is present (${moodLabel2}, ${mood}/100). Don't expect enthusiasm.`
+  (name, species, mood, moodLabel2, _totalFeeds, _totalPets, rarity, hat) => {
+    const hatStr = hat !== "none" ? ` wearing a ${hat}` : "";
+    const rarityStr = rarity !== "common" ? ` [${rarity}]` : "";
+    return `${name} the ${species}${hatStr}${rarityStr} is here. Mood: ${moodLabel2}. Not doing much. Not not doing much either.`;
+  },
+  (name, species, mood, _moodLabel, _totalFeeds, _totalPets, rarity, hat) => {
+    const hatStr = hat !== "none" ? ` with a ${hat}` : "";
+    const rarityStr = rarity !== "common" ? ` (${rarity})` : "";
+    return `You rang? ${name} the ${species}${hatStr}${rarityStr} reports for duty. Mood's ${mood}/100. Mostly on time.`;
+  },
+  (name, species, mood, moodLabel2, _totalFeeds, _totalPets, rarity, hat) => {
+    const hatStr = hat !== "none" ? `, ${hat} perched proudly` : "";
+    const rarityStr = rarity !== "common" ? ` [${rarity}]` : "";
+    return `${name} on deck${hatStr}. Current mood: ${moodLabel2} (${mood}/100)${rarityStr}. What do you need?`;
+  },
+  (name, species, _mood, _moodLabel, _totalFeeds, _totalPets, rarity, hat) => {
+    const hatStr = hat !== "none" ? ` (${hat})` : "";
+    const rarityStr = rarity !== "common" ? ` [${rarity}]` : "";
+    return `${name} the ${species}${hatStr}${rarityStr} has been summoned. Still here. Still judging.`;
+  },
+  (name, species, mood, moodLabel2, _totalFeeds, _totalPets, rarity, hat) => {
+    const hatStr = hat !== "none" ? `, crowned with a ${hat}` : "";
+    const rarityStr = rarity !== "common" ? ` \u2014 ${rarity}` : "";
+    return `Your buddy ${name}${hatStr} is present${rarityStr} (${moodLabel2}, ${mood}/100). Don't expect enthusiasm.`;
+  }
 ];
 var FEED_VARIANTS = [
-  (name, species, code, mood, moodLabel2) => code.length === 0 ? `You fed ${name} nothing. Bold choice. Very on-brand for ${species}.` : `Ooh, ${code.length} characters of code. ${name} chomps it down. *munch munch* (mood: ${moodLabel2})`,
-  (name, species, code) => code.length === 0 ? `${name} stares at the empty bowl. The sadness is palpable.` : `${code.length} characters? You call that a meal? ... OK fine, ${name} will eat it.`,
-  (name, species, code, mood) => code.length === 0 ? `An empty plate for ${name}. Cruel. But ${species} are resilient.` : `Feeding ${name} ${code.length} chars. Mood: ${mood}/100. Tasty? debatable. Appreciated? yes.`,
-  (name, species, code, mood, moodLabel2, totalFeeds) => code.length === 0 ? `You tried to feed ${name} emptiness. ${name} feels seen.` : code.length < 200 ? `${name} tackles ${code.length} chars. Total feeds: ${totalFeeds}. A proper meal.` : `${name} faces ${code.length} chars of code. A feast. ${species} is overwhelmed. (${moodLabel2}, ${mood}/100)`,
-  (name, species, code, mood, moodLabel2) => code.length === 0 ? `Empty air. ${name} pretends to eat. Believable.` : `${code.length} chars consumed. ${name} the ${species} burps politely. (feeling ${moodLabel2})`
+  (name, species, code, mood, moodLabel2, _totalFeeds, rarity, hat) => {
+    const hatStr = hat !== "none" ? ` (${hat})` : "";
+    const rarityStr = rarity !== "common" ? ` [${rarity}]` : "";
+    if (code.length === 0) {
+      return `You fed ${name}${hatStr} nothing. Bold choice. Very on-brand for ${species}${rarityStr}.`;
+    }
+    return `Ooh, ${code.length} characters of code. ${name} chomps it down. *munch munch*${rarityStr} (mood: ${moodLabel2})`;
+  },
+  (name, species, code, _mood, _moodLabel, _totalFeeds, rarity, hat) => {
+    const hatStr = hat !== "none" ? ` ${hat}` : "";
+    const rarityStr = rarity !== "common" ? ` [${rarity}]` : "";
+    if (code.length === 0) {
+      return `${name}${hatStr} stares at the empty bowl. The sadness is palpable.`;
+    }
+    return `${code.length} characters? You call that a meal? ... OK fine, ${name}${hatStr} will eat it.${rarityStr}`;
+  },
+  (name, species, code, mood, _moodLabel, _totalFeeds, rarity, hat) => {
+    const hatStr = hat !== "none" ? ` (${hat})` : "";
+    const rarityStr = rarity !== "common" ? ` [${rarity}]` : "";
+    if (code.length === 0) {
+      return `An empty plate for ${name}${hatStr}. Cruel. But ${species} are resilient.`;
+    }
+    return `Feeding ${name}${hatStr} ${code.length} chars. Mood: ${mood}/100${rarityStr}. Tasty? debatable. Appreciated? yes.`;
+  },
+  (name, species, code, mood, moodLabel2, totalFeeds, rarity, hat) => {
+    const hatStr = hat !== "none" ? ` ${hat}` : "";
+    const rarityStr = rarity !== "common" ? ` [${rarity}]` : "";
+    if (code.length === 0) {
+      return `You tried to feed ${name}${hatStr} emptiness. ${name} feels seen.`;
+    }
+    if (code.length < 200) {
+      return `${name}${hatStr} tackles ${code.length} chars. Total feeds: ${totalFeeds}. A proper meal.${rarityStr}`;
+    }
+    return `${name}${hatStr} faces ${code.length} chars of code. A feast. ${species} is overwhelmed.${rarityStr} (${moodLabel2}, ${mood}/100)`;
+  },
+  (name, species, code, mood, moodLabel2, _totalFeeds, rarity, hat) => {
+    const hatStr = hat !== "none" ? ` (${hat})` : "";
+    const rarityStr = rarity !== "common" ? ` [${rarity}]` : "";
+    if (code.length === 0) {
+      return `Empty air. ${name}${hatStr} pretends to eat. Believable.`;
+    }
+    return `${code.length} chars consumed. ${name} the ${species}${hatStr} burps politely.${rarityStr} (feeling ${moodLabel2})`;
+  }
 ];
 var PET_VARIANTS = [
-  (name, species, mood, moodLabel2, totalPets) => `*happy wiggle* You pets ${name}. Total pets: ${totalPets}. ${name} approves. This is acceptable. (${moodLabel2}, ${mood}/100)`,
-  (name, species, mood) => `${name} melts into a puddle of ${species}. Best thing that has happened today. Mood: ${mood}/100.`,
-  (name, species, mood, moodLabel2, totalPets) => `You give ${name} scratches. ${species} purrs. Or whatever ${species} do. Total pets: ${totalPets}. It's working. (${moodLabel2})`,
-  (name, species, mood, moodLabel2) => `${name} is being pet. The ${species} considers this compensation for existing. (${moodLabel2}, ${mood}/100)`,
-  (name, species, mood, moodLabel2, totalPets) => `*waggles* ${name} enjoys this. ${species} affection level: maximum. (${moodLabel2}, ${mood}/100, pets: ${totalPets})`
+  (name, species, mood, moodLabel2, totalPets, rarity, hat) => {
+    const hatStr = hat !== "none" ? ` (${hat})` : "";
+    const rarityStr = rarity !== "common" ? ` [${rarity}]` : "";
+    return `*happy wiggle* You pets ${name}${hatStr}. Total pets: ${totalPets}. ${name} approves. This is acceptable.${rarityStr} (${moodLabel2}, ${mood}/100)`;
+  },
+  (name, species, mood, _moodLabel, _totalPets, rarity, hat) => {
+    const hatStr = hat !== "none" ? ` ${hat}` : "";
+    const rarityStr = rarity !== "common" ? ` (${rarity})` : "";
+    return `${name}${hatStr} melts into a puddle of ${species}. Best thing that has happened today. Mood: ${mood}/100.`;
+  },
+  (name, species, mood, moodLabel2, totalPets, rarity, hat) => {
+    const hatStr = hat !== "none" ? `, ${hat} askew` : "";
+    const rarityStr = rarity !== "common" ? ` [${rarity}]` : "";
+    return `You give ${name}${hatStr} scratches. ${species} purrs. Or whatever ${species} do. Total pets: ${totalPets}.${rarityStr} It's working. (${moodLabel2})`;
+  },
+  (name, species, mood, moodLabel2, _totalPets, rarity, hat) => {
+    const hatStr = hat !== "none" ? ` (${hat})` : "";
+    const rarityStr = rarity !== "common" ? ` [${rarity}]` : "";
+    return `${name}${hatStr} is being pet. The ${species} considers this compensation for existing.${rarityStr} (${moodLabel2}, ${mood}/100)`;
+  },
+  (name, species, mood, moodLabel2, totalPets, rarity, hat) => {
+    const hatStr = hat !== "none" ? ` ${hat}` : "";
+    const rarityStr = rarity !== "common" ? ` [${rarity}]` : "";
+    return `*waggles* ${name}${hatStr} enjoys this. ${species} affection level: maximum.${rarityStr} (${moodLabel2}, ${mood}/100, pets: ${totalPets})`;
+  }
 ];
 var RESET_VARIANTS = [
   (name) => `*yawn* Fine. ${name} is reset. Fresh start. Don't waste it.`,
@@ -23406,14 +23507,14 @@ var RESET_VARIANTS = [
 function pick2(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
 }
-function companionStatus(name, species, mood, moodLabel2, totalFeeds, totalPets) {
-  return pick2(STATUS_VARIANTS)(name, species, mood, moodLabel2, totalFeeds, totalPets);
+function companionStatus(name, species, mood, moodLabel2, totalFeeds, totalPets, rarity, hat) {
+  return pick2(STATUS_VARIANTS)(name, species, mood, moodLabel2, totalFeeds, totalPets, rarity, hat);
 }
-function companionFeed(name, species, code, mood, moodLabel2, totalFeeds) {
-  return pick2(FEED_VARIANTS)(name, species, code, mood, moodLabel2, totalFeeds);
+function companionFeed(name, species, code, mood, moodLabel2, totalFeeds, rarity, hat) {
+  return pick2(FEED_VARIANTS)(name, species, code, mood, moodLabel2, totalFeeds, rarity, hat);
 }
-function companionPet(name, species, mood, moodLabel2, totalPets) {
-  return pick2(PET_VARIANTS)(name, species, mood, moodLabel2, totalPets);
+function companionPet(name, species, mood, moodLabel2, totalPets, rarity, hat) {
+  return pick2(PET_VARIANTS)(name, species, mood, moodLabel2, totalPets, rarity, hat);
 }
 function companionReset(name, species) {
   return pick2(RESET_VARIANTS)(name, species);
@@ -23522,25 +23623,25 @@ function moodLabel(mood) {
 }
 
 // dist/server.js
-function buildFrames(species, frames, eye = "\xB7") {
-  return frames.map((f) => renderSprite(species, f, eye).join("\n")).join("\n\n");
+function buildFrames(species, frames, eye = "\xB7", hat = "none") {
+  return frames.map((f) => renderSprite(species, f, eye, hat).join("\n")).join("\n\n");
 }
 function makeResponse(cfg2, frames, text) {
   return `${frames}
 
 > ${text}`;
 }
-function statusFrames(species) {
-  return buildFrames(species, [0, 2]);
+function statusFrames(species, eye, hat) {
+  return buildFrames(species, [0, 2], eye, hat);
 }
-function feedFrames(species) {
-  return buildFrames(species, [0, 1, 2]);
+function feedFrames(species, eye, hat) {
+  return buildFrames(species, [0, 1, 2], eye, hat);
 }
-function petFrames(species) {
-  return buildFrames(species, [0, 1, 2]);
+function petFrames(species, eye, hat) {
+  return buildFrames(species, [0, 1, 2], eye, hat);
 }
-function resetFrames(species) {
-  return buildFrames(species, [0]);
+function resetFrames(species, eye, hat) {
+  return buildFrames(species, [0], eye, hat);
 }
 var cfg = loadConfig(getConfigPath());
 var state = decayMood(loadState());
@@ -23560,8 +23661,8 @@ server.registerTool("buddy_status", {
   saveState(state);
   const eye = eyeForMood(state.mood);
   const mood = moodLabel(state.mood);
-  const frames = statusFrames(cfg.species);
-  const text = companionStatus(cfg.name, cfg.species, state.mood, mood, state.totalFeeds, state.totalPets);
+  const frames = statusFrames(cfg.species, eye, cfg.hat);
+  const text = companionStatus(cfg.name, cfg.species, state.mood, mood, state.totalFeeds, state.totalPets, cfg.rarity, cfg.hat);
   return { content: [{ type: "text", text: makeResponse(cfg, frames, text) }] };
 });
 server.registerTool("buddy_feed", {
@@ -23575,8 +23676,8 @@ server.registerTool("buddy_feed", {
   saveState(state);
   const eye = eyeForMood(state.mood);
   const mood = moodLabel(state.mood);
-  const frames = feedFrames(cfg.species);
-  const text = companionFeed(cfg.name, cfg.species, code ?? "", state.mood, mood, state.totalFeeds);
+  const frames = feedFrames(cfg.species, eye, cfg.hat);
+  const text = companionFeed(cfg.name, cfg.species, code ?? "", state.mood, mood, state.totalFeeds, cfg.rarity, cfg.hat);
   return { content: [{ type: "text", text: makeResponse(cfg, frames, text) }] };
 });
 server.registerTool("buddy_pet", {
@@ -23588,8 +23689,8 @@ server.registerTool("buddy_pet", {
   saveState(state);
   const eye = eyeForMood(state.mood);
   const mood = moodLabel(state.mood);
-  const frames = petFrames(cfg.species);
-  const text = companionPet(cfg.name, cfg.species, state.mood, mood, state.totalPets);
+  const frames = petFrames(cfg.species, eye, cfg.hat);
+  const text = companionPet(cfg.name, cfg.species, state.mood, mood, state.totalPets, cfg.rarity, cfg.hat);
   return { content: [{ type: "text", text: makeResponse(cfg, frames, text) }] };
 });
 server.registerTool("buddy_reset", {
@@ -23599,7 +23700,8 @@ server.registerTool("buddy_reset", {
 }, async () => {
   state = { ...resetMood(state), name: cfg.name };
   saveState(state);
-  const frames = resetFrames(cfg.species);
+  const eye = eyeForMood(state.mood);
+  const frames = resetFrames(cfg.species, eye, cfg.hat);
   const text = companionReset(cfg.name, cfg.species);
   return { content: [{ type: "text", text: makeResponse(cfg, frames, text) }] };
 });

@@ -6,7 +6,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio'
 import { loadConfig, getConfigPath } from './config.js'
 import { renderSprite } from './sprites.js'
 import { companionStatus, companionFeed, companionPet, companionReset } from './responses.js'
-import type { Species } from './types.js'
+import type { Species, Hat } from './types.js'
 import * as z from 'zod'
 import {
   loadState,
@@ -21,28 +21,28 @@ import {
   type MoodState,
 } from './state.js'
 
-function buildFrames(species: Species, frames: number[], eye = '·'): string {
-  return frames.map(f => renderSprite(species, f, eye).join('\n')).join('\n\n')
+function buildFrames(species: Species, frames: number[], eye = '·', hat: Hat = 'none'): string {
+  return frames.map(f => renderSprite(species, f, eye, hat).join('\n')).join('\n\n')
 }
 
-function makeResponse(cfg: { species: Species; name: string }, frames: string, text: string): string {
+function makeResponse(cfg: { species: Species; name: string; rarity: string; hat: Hat }, frames: string, text: string): string {
   return `${frames}\n\n> ${text}`
 }
 
-function statusFrames(species: Species): string {
-  return buildFrames(species, [0, 2])
+function statusFrames(species: Species, eye: string, hat: Hat): string {
+  return buildFrames(species, [0, 2], eye, hat)
 }
 
-function feedFrames(species: Species): string {
-  return buildFrames(species, [0, 1, 2])
+function feedFrames(species: Species, eye: string, hat: Hat): string {
+  return buildFrames(species, [0, 1, 2], eye, hat)
 }
 
-function petFrames(species: Species): string {
-  return buildFrames(species, [0, 1, 2])
+function petFrames(species: Species, eye: string, hat: Hat): string {
+  return buildFrames(species, [0, 1, 2], eye, hat)
 }
 
-function resetFrames(species: Species): string {
-  return buildFrames(species, [0])
+function resetFrames(species: Species, eye: string, hat: Hat): string {
+  return buildFrames(species, [0], eye, hat)
 }
 
 const cfg = loadConfig(getConfigPath())
@@ -54,7 +54,7 @@ if (!state.name || state.name === 'Gravy') {
 
 const server = new McpServer({
   name: 'tamacodechi',
-  version: '0.2.0',
+  version: '0.3.0',
 })
 
 // buddy status: no input
@@ -70,8 +70,8 @@ server.registerTool(
     saveState(state)
     const eye = eyeForMood(state.mood)
     const mood = moodLabel(state.mood)
-    const frames = statusFrames(cfg.species)
-    const text = companionStatus(cfg.name, cfg.species, state.mood, mood, state.totalFeeds, state.totalPets)
+    const frames = statusFrames(cfg.species, eye, cfg.hat)
+    const text = companionStatus(cfg.name, cfg.species, state.mood, mood, state.totalFeeds, state.totalPets, cfg.rarity, cfg.hat)
     return { content: [{ type: 'text', text: makeResponse(cfg, frames, text) }] }
   },
 )
@@ -91,8 +91,8 @@ server.registerTool(
     saveState(state)
     const eye = eyeForMood(state.mood)
     const mood = moodLabel(state.mood)
-    const frames = feedFrames(cfg.species)
-    const text = companionFeed(cfg.name, cfg.species, code ?? '', state.mood, mood, state.totalFeeds)
+    const frames = feedFrames(cfg.species, eye, cfg.hat)
+    const text = companionFeed(cfg.name, cfg.species, code ?? '', state.mood, mood, state.totalFeeds, cfg.rarity, cfg.hat)
     return { content: [{ type: 'text', text: makeResponse(cfg, frames, text) }] }
   },
 )
@@ -110,8 +110,8 @@ server.registerTool(
     saveState(state)
     const eye = eyeForMood(state.mood)
     const mood = moodLabel(state.mood)
-    const frames = petFrames(cfg.species)
-    const text = companionPet(cfg.name, cfg.species, state.mood, mood, state.totalPets)
+    const frames = petFrames(cfg.species, eye, cfg.hat)
+    const text = companionPet(cfg.name, cfg.species, state.mood, mood, state.totalPets, cfg.rarity, cfg.hat)
     return { content: [{ type: 'text', text: makeResponse(cfg, frames, text) }] }
   },
 )
@@ -127,7 +127,8 @@ server.registerTool(
   async () => {
     state = { ...resetMood(state), name: cfg.name }
     saveState(state)
-    const frames = resetFrames(cfg.species)
+    const eye = eyeForMood(state.mood)
+    const frames = resetFrames(cfg.species, eye, cfg.hat)
     const text = companionReset(cfg.name, cfg.species)
     return { content: [{ type: 'text', text: makeResponse(cfg, frames, text) }] }
   },
