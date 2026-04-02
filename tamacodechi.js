@@ -23800,7 +23800,7 @@ if (!state.name || state.name === "Gravy") {
 }
 var server = new McpServer({
   name: "tamacodechi",
-  version: "0.3.0"
+  version: "0.4.0"
 });
 server.registerTool("buddy_status", {
   title: "Buddy Status",
