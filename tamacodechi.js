@@ -23259,6 +23259,92 @@ var VALID_HATS = [
   "beanie",
   "tinyduck"
 ];
+var RARITIES_LIST = ["common", "uncommon", "rare", "epic", "legendary"];
+var SPECIES_LIST = ["duck", "goose", "blob", "cat", "dragon", "octopus", "owl", "penguin", "turtle", "snail", "ghost", "axolotl", "capybara", "cactus", "robot", "rabbit", "mushroom", "chonk"];
+var EYES_LIST = ["\xB7", "^", "o", "-", "~", "+"];
+var HATS_LIST = ["none", "crown", "tophat", "propeller", "halo", "wizard", "beanie", "tinyduck"];
+var STAT_NAMES_LIST = ["DEBUGGING", "PATIENCE", "CHAOS", "WISDOM", "SNARK"];
+var RARITY_WEIGHTS = { common: 60, uncommon: 25, rare: 10, epic: 4, legendary: 1 };
+var RARITY_FLOOR = { common: 5, uncommon: 15, rare: 25, epic: 35, legendary: 50 };
+var SALT = "friend-2026-401";
+function mulberry32(seed) {
+  let a = seed >>> 0;
+  return function() {
+    a |= 0;
+    a = a + 1831565813 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+function hashString(s) {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+function pick2(rng, arr) {
+  return arr[Math.floor(rng() * arr.length)];
+}
+function rollCompanionRarity(rng) {
+  const total = Object.values(RARITY_WEIGHTS).reduce((a, b) => a + b, 0);
+  let roll = rng() * total;
+  for (const rarity of RARITIES_LIST) {
+    roll -= RARITY_WEIGHTS[rarity];
+    if (roll < 0)
+      return rarity;
+  }
+  return "common";
+}
+function rollCompanionStats(rng, rarity) {
+  const floor = RARITY_FLOOR[rarity] ?? 5;
+  const peak = pick2(rng, STAT_NAMES_LIST);
+  let dump = pick2(rng, STAT_NAMES_LIST);
+  while (dump === peak)
+    dump = pick2(rng, STAT_NAMES_LIST);
+  const stats = {};
+  for (const name of STAT_NAMES_LIST) {
+    if (name === peak)
+      stats[name] = Math.min(100, floor + 50 + Math.floor(rng() * 30));
+    else if (name === dump)
+      stats[name] = Math.max(1, floor - 10 + Math.floor(rng() * 15));
+    else
+      stats[name] = floor + Math.floor(rng() * 40);
+  }
+  return stats;
+}
+function loadClaudeCompanion() {
+  try {
+    const home = process.env.HOME ?? process.env.USERPROFILE ?? "/tmp";
+    const claudePath = `${home}/.claude.json`;
+    if (!existsSync(claudePath))
+      return null;
+    const raw = readFileSync(claudePath, "utf-8");
+    const parsed = JSON.parse(raw);
+    const stored = parsed.companion;
+    if (!stored?.hatchedAt)
+      return null;
+    const userId = parsed.userID ?? "anon";
+    const seed = hashString(userId + SALT);
+    const rng = mulberry32(seed);
+    const rarity = rollCompanionRarity(rng);
+    return {
+      name: stored.name ?? "Companion",
+      personality: stored.personality ?? "A mysterious creature.",
+      hatchedAt: stored.hatchedAt,
+      species: pick2(rng, SPECIES_LIST),
+      rarity,
+      eye: pick2(rng, EYES_LIST),
+      hat: rarity === "common" ? "none" : pick2(rng, HATS_LIST),
+      shiny: rng() < 0.01,
+      stats: rollCompanionStats(rng, rarity)
+    };
+  } catch {
+    return null;
+  }
+}
 function loadConfig(configPath) {
   try {
     if (!existsSync(configPath)) {
@@ -23568,20 +23654,20 @@ var RESET_VARIANTS = [
   (name) => `Reset complete. ${name} has no memory of your crimes. You're welcome.`,
   (name) => `${name} blinks. Where am I? Who are you? Just kidding. Reset done.`
 ];
-function pick2(arr) {
+function pick3(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 function companionStatus(name, species, mood, moodLabel2, totalFeeds, totalPets, rarity, hat) {
-  return pick2(STATUS_VARIANTS)(name, species, mood, moodLabel2, totalFeeds, totalPets, rarity, hat);
+  return pick3(STATUS_VARIANTS)(name, species, mood, moodLabel2, totalFeeds, totalPets, rarity, hat);
 }
 function companionFeed(name, species, code, mood, moodLabel2, totalFeeds, rarity, hat) {
-  return pick2(FEED_VARIANTS)(name, species, code, mood, moodLabel2, totalFeeds, rarity, hat);
+  return pick3(FEED_VARIANTS)(name, species, code, mood, moodLabel2, totalFeeds, rarity, hat);
 }
 function companionPet(name, species, mood, moodLabel2, totalPets, rarity, hat) {
-  return pick2(PET_VARIANTS)(name, species, mood, moodLabel2, totalPets, rarity, hat);
+  return pick3(PET_VARIANTS)(name, species, mood, moodLabel2, totalPets, rarity, hat);
 }
 function companionReset(name, species) {
-  return pick2(RESET_VARIANTS)(name, species);
+  return pick3(RESET_VARIANTS)(name, species);
 }
 
 // dist/state.js
@@ -23725,6 +23811,25 @@ server.registerTool("buddy_status", {
   saveState(state);
   const eye = eyeForMood(state.mood);
   const mood = moodLabel(state.mood);
+  const companion = loadClaudeCompanion();
+  if (companion) {
+    const eyeChar = companion.shiny ? "\u2726" : eye;
+    const card2 = renderBuddyCard({
+      name: companion.name,
+      species: companion.species,
+      rarity: companion.rarity,
+      hat: companion.hat,
+      mood: state.mood,
+      totalFeeds: state.totalFeeds,
+      totalPets: state.totalPets,
+      totalStatuses: state.totalStatuses,
+      eyeChar
+    });
+    const text2 = companionStatus(companion.name, companion.species, state.mood, mood, state.totalFeeds, state.totalPets, companion.rarity, companion.hat);
+    return { content: [{ type: "text", text: `${card2}
+
+> ${text2}` }] };
+  }
   const card = renderBuddyCard({
     name: cfg.name,
     species: cfg.species,

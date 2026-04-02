@@ -3,7 +3,7 @@
 // Mood system: state persists to ~/.tamacodechi/state.json
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio'
-import { loadConfig, getConfigPath, saveConfig } from './config.js'
+import { loadConfig, getConfigPath, saveConfig, loadClaudeCompanion } from './config.js'
 import { renderSprite, renderBuddyCard } from './sprites.js'
 import { companionStatus, companionFeed, companionPet, companionReset } from './responses.js'
 import type { Species, Hat } from './types.js'
@@ -70,6 +70,24 @@ server.registerTool(
     saveState(state)
     const eye = eyeForMood(state.mood)
     const mood = moodLabel(state.mood)
+    const companion = loadClaudeCompanion()
+    if (companion) {
+      const eyeChar = companion.shiny ? '✦' : eye
+      const card = renderBuddyCard({
+        name: companion.name,
+        species: companion.species as Species,
+        rarity: companion.rarity,
+        hat: companion.hat as Hat,
+        mood: state.mood,
+        totalFeeds: state.totalFeeds,
+        totalPets: state.totalPets,
+        totalStatuses: state.totalStatuses,
+        eyeChar,
+      })
+      const text = companionStatus(companion.name, companion.species, state.mood, mood, state.totalFeeds, state.totalPets, companion.rarity, companion.hat)
+      return { content: [{ type: 'text', text: `${card}\n\n> ${text}` }] }
+    }
+    // Fallback to tamacodechi config if no Claude companion
     const card = renderBuddyCard({
       name: cfg.name,
       species: cfg.species,
