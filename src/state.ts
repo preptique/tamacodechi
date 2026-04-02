@@ -19,6 +19,7 @@ const DEFAULT_STATE: MoodState = {
   totalStatuses: 0,
   lastUpdated: Date.now(),
   name: 'Gravy',
+  companionUserId: undefined,
 }
 
 function getStatePath(): string {

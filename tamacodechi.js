@@ -23678,7 +23678,8 @@ var DEFAULT_STATE = {
   totalPets: 0,
   totalStatuses: 0,
   lastUpdated: Date.now(),
-  name: "Gravy"
+  name: "Gravy",
+  companionUserId: void 0
 };
 function getStatePath() {
   const home = process.env.HOME ?? process.env.USERPROFILE ?? "/tmp";
@@ -23812,7 +23813,37 @@ server.registerTool("buddy_status", {
   saveState(state);
   const eye = eyeForMood(state.mood);
   const mood = moodLabel(state.mood);
-  const companion = loadClaudeCompanion(state.companionUserId);
+  if (!state.companionUserId) {
+    const companion2 = loadClaudeCompanion();
+    if (companion2?.hatchedAt) {
+      const eyeChar = companion2.shiny ? "\u2726" : eye;
+      const card2 = renderBuddyCard({
+        name: companion2.name,
+        species: companion2.species,
+        rarity: companion2.rarity,
+        hat: companion2.hat,
+        mood: state.mood,
+        totalFeeds: state.totalFeeds,
+        totalPets: state.totalPets,
+        totalStatuses: state.totalStatuses,
+        eyeChar
+      });
+      return {
+        content: [{
+          type: "text",
+          text: `${card2}
+
+> Companion detected! Run this ONE-TIME command to link your buddy:
+/mcp tamacodechi buddy_link --userId <accountUuid>
+
+To get your accountUuid: /claude-code-eval console.log(getGlobalConfig().oauthAccount?.accountUuid)
+
+After linking, your /buddy stats will sync with buddy_status!`
+        }]
+      };
+    }
+  }
+  const companion = state.companionUserId ? loadClaudeCompanion(state.companionUserId) : null;
   if (companion) {
     const eyeChar = companion.shiny ? "\u2726" : eye;
     const card2 = renderBuddyCard({

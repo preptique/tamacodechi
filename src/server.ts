@@ -70,7 +70,34 @@ server.registerTool(
     saveState(state)
     const eye = eyeForMood(state.mood)
     const mood = moodLabel(state.mood)
-    const companion = loadClaudeCompanion(state.companionUserId)
+
+    // Try to auto-link on first use
+    if (!state.companionUserId) {
+      const companion = loadClaudeCompanion()
+      if (companion?.hatchedAt) {
+        // Companion exists but not linked — prompt user to link
+        const eyeChar = companion.shiny ? '✦' : eye
+        const card = renderBuddyCard({
+          name: companion.name,
+          species: companion.species as Species,
+          rarity: companion.rarity,
+          hat: companion.hat as Hat,
+          mood: state.mood,
+          totalFeeds: state.totalFeeds,
+          totalPets: state.totalPets,
+          totalStatuses: state.totalStatuses,
+          eyeChar,
+        })
+        return {
+          content: [{
+            type: 'text',
+            text: `${card}\n\n> Companion detected! Run this ONE-TIME command to link your buddy:\n/mcp tamacodechi buddy_link --userId <accountUuid>\n\nTo get your accountUuid: /claude-code-eval console.log(getGlobalConfig().oauthAccount?.accountUuid)\n\nAfter linking, your /buddy stats will sync with buddy_status!`,
+          }],
+        }
+      }
+    }
+
+    const companion = state.companionUserId ? loadClaudeCompanion(state.companionUserId) : null
     if (companion) {
       const eyeChar = companion.shiny ? '✦' : eye
       const card = renderBuddyCard({
