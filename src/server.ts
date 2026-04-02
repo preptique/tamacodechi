@@ -87,6 +87,7 @@ server.registerTool(
           totalPets: state.totalPets,
           totalStatuses: state.totalStatuses,
           eyeChar,
+          personality: companion.personality,
         })
         return {
           content: [{
@@ -110,6 +111,7 @@ server.registerTool(
         totalPets: state.totalPets,
         totalStatuses: state.totalStatuses,
         eyeChar,
+        personality: companion.personality,
       })
       const text = companionStatus(companion.name, companion.species, state.mood, mood, state.totalFeeds, state.totalPets, companion.rarity, companion.hat)
       return { content: [{ type: 'text', text: `${card}\n\n> ${text}` }] }
@@ -269,6 +271,7 @@ server.registerTool(
       totalPets: state.totalPets,
       totalStatuses: state.totalStatuses,
       eyeChar: eye,
+      personality: companion.personality,
     })
     return { content: [{ type: 'text', text: `${card}\n\n> Companion linked! ${companion.name} the ${companion.rarity} ${companion.species} is now synced. Your /buddy and buddy_status will show the same companion.` }] }
   },

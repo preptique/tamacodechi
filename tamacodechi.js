@@ -23326,13 +23326,15 @@ function loadClaudeCompanion(overrideUserId) {
     const stored = parsed.companion;
     if (!stored?.hatchedAt)
       return null;
-    const userId = overrideUserId ?? stored.companionUserId ?? stored.userId ?? parsed.userID ?? "anon";
+    const name = stored.name ?? "Companion";
+    const personality = stored.personality ?? "A mysterious creature.";
+    const userId = overrideUserId ?? stored.companionUserId ?? parsed.userID ?? "anon";
     const seed = hashString(userId + SALT);
     const rng = mulberry32(seed);
     const rarity = rollCompanionRarity(rng);
     return {
-      name: stored.name ?? "Companion",
-      personality: stored.personality ?? "A mysterious creature.",
+      name,
+      personality,
       hatchedAt: stored.hatchedAt,
       species: pick2(rng, SPECIES_LIST),
       rarity,
@@ -23504,14 +23506,12 @@ var PERSONALITY_QUOTES = [
   "Mostly correct observations."
 ];
 function renderBuddyCard(params) {
-  const { name, species, rarity, hat, mood, totalFeeds, totalPets, totalStatuses, eyeChar } = params;
+  const { name, species, rarity, hat, mood, totalFeeds, totalPets, totalStatuses, eyeChar, personality } = params;
   const rarityLabel = rarity.toUpperCase();
   const star = rarity !== "common" ? "\u2605" : "\u2606";
   const rarityBar = `${star} ${rarityLabel.padEnd(12)} ${species.toUpperCase().padStart(12)}`;
   const spriteLines = renderSprite(species, 0, eyeChar, hat);
   const spriteWidth = 12;
-  const cardInner = spriteLines.map((l) => `  ${l.padEnd(spriteWidth)}`).join("\n");
-  const padding = " ".repeat(12);
   const debugStat = Math.min(totalStatuses * 3, 100);
   const patienceStat = mood;
   const chaosStat = Math.max(100 - mood, 0);
@@ -23529,7 +23529,8 @@ function renderBuddyCard(params) {
   const blankLine = `\u2502${" ".repeat(rarityBar.length + 4)}\u2502`;
   const spriteLine = (line) => `\u2502${line}${" ".repeat(Math.max(0, rarityBar.length + 4 - line.length))}\u2502`;
   const nameLine = `\u2502  ${name.padEnd(rarityBar.length + 2)}  \u2502`;
-  const quoteLine = `\u2502  "${PERSONALITY_QUOTES[Math.abs(name.charCodeAt(0) ?? 0) % PERSONALITY_QUOTES.length]}"${" ".repeat(Math.max(0, rarityBar.length - (PERSONALITY_QUOTES[0]?.length ?? 30) - 1))}  \u2502`;
+  const quoteText = personality ?? PERSONALITY_QUOTES[Math.abs(name.charCodeAt(0) ?? 0) % PERSONALITY_QUOTES.length];
+  const quoteLine = `\u2502  "${quoteText}"${" ".repeat(Math.max(0, rarityBar.length - quoteText.length - 1))}  \u2502`;
   const statsStart = `\u2502${" ".repeat(rarityBar.length + 4)}\u2502`;
   const statLine = (label, value) => `\u2502  ${label}${statBar(value)}  ${String(value).padStart(3)}           \u2502`;
   const bottomLine = `\u2570${"\u2500".repeat(rarityBar.length + 4)}\u256F`;
@@ -23826,7 +23827,8 @@ server.registerTool("buddy_status", {
         totalFeeds: state.totalFeeds,
         totalPets: state.totalPets,
         totalStatuses: state.totalStatuses,
-        eyeChar
+        eyeChar,
+        personality: companion2.personality
       });
       return {
         content: [{
@@ -23855,7 +23857,8 @@ After linking, your /buddy stats will sync with buddy_status!`
       totalFeeds: state.totalFeeds,
       totalPets: state.totalPets,
       totalStatuses: state.totalStatuses,
-      eyeChar
+      eyeChar,
+      personality: companion.personality
     });
     const text2 = companionStatus(companion.name, companion.species, state.mood, mood, state.totalFeeds, state.totalPets, companion.rarity, companion.hat);
     return { content: [{ type: "text", text: `${card2}
@@ -23981,7 +23984,8 @@ server.registerTool("buddy_link", {
     totalFeeds: state.totalFeeds,
     totalPets: state.totalPets,
     totalStatuses: state.totalStatuses,
-    eyeChar: eye
+    eyeChar: eye,
+    personality: companion.personality
   });
   return { content: [{ type: "text", text: `${card}
 

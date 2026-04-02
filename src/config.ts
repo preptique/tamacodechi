@@ -111,14 +111,17 @@ export function loadClaudeCompanion(overrideUserId?: string): ClaudeCompanion | 
     }
     const stored = parsed.companion
     if (!stored?.hatchedAt) return null
-    // Prefer: overrideUserId > stored.companionUserId > stored.userId > config.userID
-    const userId = overrideUserId ?? (stored as any).companionUserId ?? stored.userId ?? parsed.userID ?? 'anon'
+    // Use the stored companion's name/personality (always correct from Claude Code)
+    const name = stored.name ?? 'Companion'
+    const personality = stored.personality ?? 'A mysterious creature.'
+    // Try to get the right userId for species/stats computation
+    const userId = overrideUserId ?? (stored as any).companionUserId ?? parsed.userID ?? 'anon'
     const seed = hashString(userId + SALT)
     const rng = mulberry32(seed)
     const rarity = rollCompanionRarity(rng)
     return {
-      name: stored.name ?? 'Companion',
-      personality: stored.personality ?? 'A mysterious creature.',
+      name,
+      personality,
       hatchedAt: stored.hatchedAt,
       species: pick(rng, SPECIES_LIST),
       rarity,

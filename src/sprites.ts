@@ -157,8 +157,9 @@ export function renderBuddyCard(params: {
   totalPets: number
   totalStatuses: number
   eyeChar: string
+  personality?: string
 }): string {
-  const { name, species, rarity, hat, mood, totalFeeds, totalPets, totalStatuses, eyeChar } = params
+  const { name, species, rarity, hat, mood, totalFeeds, totalPets, totalStatuses, eyeChar, personality } = params
 
   const rarityLabel = rarity.toUpperCase()
   const star = rarity !== 'common' ? '★' : '☆'
@@ -166,8 +167,6 @@ export function renderBuddyCard(params: {
 
   const spriteLines = renderSprite(species, 0, eyeChar, hat)
   const spriteWidth = 12
-  const cardInner = spriteLines.map(l => `  ${l.padEnd(spriteWidth)}`).join('\n')
-  const padding = ' '.repeat(12)
 
   const debugStat = Math.min(totalStatuses * 3, 100)
   const patienceStat = mood
@@ -188,7 +187,8 @@ export function renderBuddyCard(params: {
   const blankLine = `│${' '.repeat(rarityBar.length + 4)}│`
   const spriteLine = (line: string) => `│${line}${' '.repeat(Math.max(0, rarityBar.length + 4 - line.length))}│`
   const nameLine = `│  ${name.padEnd(rarityBar.length + 2)}  │`
-  const quoteLine = `│  "${PERSONALITY_QUOTES[Math.abs(name.charCodeAt(0) ?? 0) % PERSONALITY_QUOTES.length]}"${' '.repeat(Math.max(0, rarityBar.length - (PERSONALITY_QUOTES[0]?.length ?? 30) - 1))}  │`
+  const quoteText = personality ?? PERSONALITY_QUOTES[Math.abs(name.charCodeAt(0) ?? 0) % PERSONALITY_QUOTES.length]
+  const quoteLine = `│  "${quoteText}"${' '.repeat(Math.max(0, rarityBar.length - quoteText.length - 1))}  │`
   const statsStart = `│${' '.repeat(rarityBar.length + 4)}│`
   const statLine = (label: string, value: number) =>
     `│  ${label}${statBar(value)}  ${String(value).padStart(3)}           │`
