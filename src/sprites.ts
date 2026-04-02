@@ -129,3 +129,82 @@ export function renderSprite(species: Species, frame = 0, eyeChar = '·', hat: H
 export function spriteFrameCount(species: Species): number {
   return BODIES[species]?.length ?? 0
 }
+
+function statBar(value: number): string {
+  const filled = Math.round(value / 10)
+  const empty = 10 - filled
+  return '█'.repeat(filled) + '░'.repeat(empty)
+}
+
+const PERSONALITY_QUOTES = [
+  'A companion of few words.',
+  'Mostly just vibes here.',
+  'Judging your code silently.',
+  'Present and accounted for.',
+  'Still deciding if it likes you.',
+  'Very informative.',
+  'Not great at conversational turns.',
+  'Mostly correct observations.',
+]
+
+export function renderBuddyCard(params: {
+  name: string
+  species: Species
+  rarity: string
+  hat: Hat
+  mood: number
+  totalFeeds: number
+  totalPets: number
+  totalStatuses: number
+  eyeChar: string
+}): string {
+  const { name, species, rarity, hat, mood, totalFeeds, totalPets, totalStatuses, eyeChar } = params
+
+  const rarityLabel = rarity.toUpperCase()
+  const star = rarity !== 'common' ? '★' : '☆'
+  const rarityBar = `${star} ${rarityLabel.padEnd(12)} ${species.toUpperCase().padStart(12)}`
+
+  const spriteLines = renderSprite(species, 0, eyeChar, hat)
+  const spriteWidth = 12
+  const cardInner = spriteLines.map(l => `  ${l.padEnd(spriteWidth)}`).join('\n')
+  const padding = ' '.repeat(12)
+
+  const debugStat = Math.min(totalStatuses * 3, 100)
+  const patienceStat = mood
+  const chaosStat = Math.max(100 - mood, 0)
+  const wisdomStat = Math.min(totalFeeds * 5, 100)
+  const snarkStat = Math.min(totalPets * 10, 100)
+
+  const stats = [
+    ['DEBUGGING ', debugStat],
+    ['PATIENCE ', patienceStat],
+    ['CHAOS    ', chaosStat],
+    ['WISDOM   ', wisdomStat],
+    ['SNARK    ', snarkStat],
+  ] as [string, number][]
+
+  const topLine = `╭${'─'.repeat(rarityBar.length + 4)}╮`
+  const rarityLine = `│  ${rarityBar}  │`
+  const blankLine = `│${' '.repeat(rarityBar.length + 4)}│`
+  const spriteLine = (line: string) => `│${line}${' '.repeat(Math.max(0, rarityBar.length + 4 - line.length))}│`
+  const nameLine = `│  ${name.padEnd(rarityBar.length + 2)}  │`
+  const quoteLine = `│  "${PERSONALITY_QUOTES[Math.abs(name.charCodeAt(0) ?? 0) % PERSONALITY_QUOTES.length]}"${' '.repeat(Math.max(0, rarityBar.length - (PERSONALITY_QUOTES[0]?.length ?? 30) - 1))}  │`
+  const statsStart = `│${' '.repeat(rarityBar.length + 4)}│`
+  const statLine = (label: string, value: number) =>
+    `│  ${label}${statBar(value)}  ${String(value).padStart(3)}           │`
+  const bottomLine = `╰${'─'.repeat(rarityBar.length + 4)}╯`
+
+  return [
+    topLine,
+    rarityLine,
+    blankLine,
+    ...spriteLines.map(l => spriteLine(`  ${l}`)),
+    blankLine,
+    nameLine,
+    quoteLine,
+    blankLine,
+    ...stats.map(([label, value]) => statLine(label, value)),
+    blankLine,
+    bottomLine,
+  ].join('\n')
+}

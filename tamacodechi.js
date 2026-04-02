@@ -23402,6 +23402,65 @@ function renderSprite(species, frame = 0, eyeChar = "\xB7", hat = "none") {
     lines.shift();
   return lines;
 }
+function statBar(value) {
+  const filled = Math.round(value / 10);
+  const empty = 10 - filled;
+  return "\u2588".repeat(filled) + "\u2591".repeat(empty);
+}
+var PERSONALITY_QUOTES = [
+  "A companion of few words.",
+  "Mostly just vibes here.",
+  "Judging your code silently.",
+  "Present and accounted for.",
+  "Still deciding if it likes you.",
+  "Very informative.",
+  "Not great at conversational turns.",
+  "Mostly correct observations."
+];
+function renderBuddyCard(params) {
+  const { name, species, rarity, hat, mood, totalFeeds, totalPets, totalStatuses, eyeChar } = params;
+  const rarityLabel = rarity.toUpperCase();
+  const star = rarity !== "common" ? "\u2605" : "\u2606";
+  const rarityBar = `${star} ${rarityLabel.padEnd(12)} ${species.toUpperCase().padStart(12)}`;
+  const spriteLines = renderSprite(species, 0, eyeChar, hat);
+  const spriteWidth = 12;
+  const cardInner = spriteLines.map((l) => `  ${l.padEnd(spriteWidth)}`).join("\n");
+  const padding = " ".repeat(12);
+  const debugStat = Math.min(totalStatuses * 3, 100);
+  const patienceStat = mood;
+  const chaosStat = Math.max(100 - mood, 0);
+  const wisdomStat = Math.min(totalFeeds * 5, 100);
+  const snarkStat = Math.min(totalPets * 10, 100);
+  const stats = [
+    ["DEBUGGING ", debugStat],
+    ["PATIENCE ", patienceStat],
+    ["CHAOS    ", chaosStat],
+    ["WISDOM   ", wisdomStat],
+    ["SNARK    ", snarkStat]
+  ];
+  const topLine = `\u256D${"\u2500".repeat(rarityBar.length + 4)}\u256E`;
+  const rarityLine = `\u2502  ${rarityBar}  \u2502`;
+  const blankLine = `\u2502${" ".repeat(rarityBar.length + 4)}\u2502`;
+  const spriteLine = (line) => `\u2502${line}${" ".repeat(Math.max(0, rarityBar.length + 4 - line.length))}\u2502`;
+  const nameLine = `\u2502  ${name.padEnd(rarityBar.length + 2)}  \u2502`;
+  const quoteLine = `\u2502  "${PERSONALITY_QUOTES[Math.abs(name.charCodeAt(0) ?? 0) % PERSONALITY_QUOTES.length]}"${" ".repeat(Math.max(0, rarityBar.length - (PERSONALITY_QUOTES[0]?.length ?? 30) - 1))}  \u2502`;
+  const statsStart = `\u2502${" ".repeat(rarityBar.length + 4)}\u2502`;
+  const statLine = (label, value) => `\u2502  ${label}${statBar(value)}  ${String(value).padStart(3)}           \u2502`;
+  const bottomLine = `\u2570${"\u2500".repeat(rarityBar.length + 4)}\u256F`;
+  return [
+    topLine,
+    rarityLine,
+    blankLine,
+    ...spriteLines.map((l) => spriteLine(`  ${l}`)),
+    blankLine,
+    nameLine,
+    quoteLine,
+    blankLine,
+    ...stats.map(([label, value]) => statLine(label, value)),
+    blankLine,
+    bottomLine
+  ].join("\n");
+}
 
 // dist/responses.js
 var STATUS_VARIANTS = [
@@ -23666,9 +23725,21 @@ server.registerTool("buddy_status", {
   saveState(state);
   const eye = eyeForMood(state.mood);
   const mood = moodLabel(state.mood);
-  const frames = statusFrames(cfg.species, eye, cfg.hat);
+  const card = renderBuddyCard({
+    name: cfg.name,
+    species: cfg.species,
+    rarity: cfg.rarity,
+    hat: cfg.hat,
+    mood: state.mood,
+    totalFeeds: state.totalFeeds,
+    totalPets: state.totalPets,
+    totalStatuses: state.totalStatuses,
+    eyeChar: eye
+  });
   const text = companionStatus(cfg.name, cfg.species, state.mood, mood, state.totalFeeds, state.totalPets, cfg.rarity, cfg.hat);
-  return { content: [{ type: "text", text: makeResponse(cfg, frames, text) }] };
+  return { content: [{ type: "text", text: `${card}
+
+> ${text}` }] };
 });
 server.registerTool("buddy_feed", {
   title: "Feed Buddy",

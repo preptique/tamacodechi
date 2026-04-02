@@ -4,7 +4,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio'
 import { loadConfig, getConfigPath, saveConfig } from './config.js'
-import { renderSprite } from './sprites.js'
+import { renderSprite, renderBuddyCard } from './sprites.js'
 import { companionStatus, companionFeed, companionPet, companionReset } from './responses.js'
 import type { Species, Hat } from './types.js'
 import * as z from 'zod'
@@ -70,9 +70,19 @@ server.registerTool(
     saveState(state)
     const eye = eyeForMood(state.mood)
     const mood = moodLabel(state.mood)
-    const frames = statusFrames(cfg.species, eye, cfg.hat)
+    const card = renderBuddyCard({
+      name: cfg.name,
+      species: cfg.species,
+      rarity: cfg.rarity,
+      hat: cfg.hat,
+      mood: state.mood,
+      totalFeeds: state.totalFeeds,
+      totalPets: state.totalPets,
+      totalStatuses: state.totalStatuses,
+      eyeChar: eye,
+    })
     const text = companionStatus(cfg.name, cfg.species, state.mood, mood, state.totalFeeds, state.totalPets, cfg.rarity, cfg.hat)
-    return { content: [{ type: 'text', text: makeResponse(cfg, frames, text) }] }
+    return { content: [{ type: 'text', text: `${card}\n\n> ${text}` }] }
   },
 )
 
