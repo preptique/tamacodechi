@@ -54,7 +54,7 @@ if (!state.name || state.name === 'Gravy') {
 
 const server = new McpServer({
   name: 'tamacodechi',
-  version: '0.3.0',
+  version: '0.4.0',
 })
 
 // buddy status: no input
