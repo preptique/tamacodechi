@@ -94,7 +94,7 @@ export type ClaudeCompanion = {
   stats: Record<string, number>
 }
 
-export function loadClaudeCompanion(): ClaudeCompanion | null {
+export function loadClaudeCompanion(overrideUserId?: string): ClaudeCompanion | null {
   try {
     const home = process.env.HOME ?? process.env.USERPROFILE ?? '/tmp'
     const claudePath = `${home}/.claude.json`
@@ -102,11 +102,17 @@ export function loadClaudeCompanion(): ClaudeCompanion | null {
     const raw = readFileSync(claudePath, 'utf-8')
     const parsed = JSON.parse(raw) as {
       userID?: string
-      companion?: { name?: string; personality?: string; hatchedAt?: number }
+      companion?: {
+        name?: string
+        personality?: string
+        hatchedAt?: number
+        userId?: string
+      }
     }
     const stored = parsed.companion
     if (!stored?.hatchedAt) return null
-    const userId = parsed.userID ?? 'anon'
+    // Prefer: overrideUserId > stored.companionUserId > stored.userId > config.userID
+    const userId = overrideUserId ?? (stored as any).companionUserId ?? stored.userId ?? parsed.userID ?? 'anon'
     const seed = hashString(userId + SALT)
     const rng = mulberry32(seed)
     const rarity = rollCompanionRarity(rng)

@@ -9,6 +9,7 @@ export type MoodState = {
   totalStatuses: number
   lastUpdated: number // unix timestamp
   name: string       // pet name, persisted so reset doesn't lose it
+  companionUserId?: string // userId used to compute Claude companion bones
 }
 
 const DEFAULT_STATE: MoodState = {
@@ -45,6 +46,7 @@ export function loadState(): MoodState {
       totalStatuses: typeof parsed.totalStatuses === 'number' ? parsed.totalStatuses : 0,
       lastUpdated: typeof parsed.lastUpdated === 'number' ? parsed.lastUpdated : Date.now(),
       name: typeof parsed.name === 'string' && parsed.name.length > 0 ? parsed.name : DEFAULT_STATE.name,
+      companionUserId: typeof parsed.companionUserId === 'string' ? parsed.companionUserId : undefined,
     }
   } catch {
     return { ...DEFAULT_STATE }

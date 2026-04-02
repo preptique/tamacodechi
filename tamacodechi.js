@@ -23315,7 +23315,7 @@ function rollCompanionStats(rng, rarity) {
   }
   return stats;
 }
-function loadClaudeCompanion() {
+function loadClaudeCompanion(overrideUserId) {
   try {
     const home = process.env.HOME ?? process.env.USERPROFILE ?? "/tmp";
     const claudePath = `${home}/.claude.json`;
@@ -23326,7 +23326,7 @@ function loadClaudeCompanion() {
     const stored = parsed.companion;
     if (!stored?.hatchedAt)
       return null;
-    const userId = parsed.userID ?? "anon";
+    const userId = overrideUserId ?? stored.companionUserId ?? stored.userId ?? parsed.userID ?? "anon";
     const seed = hashString(userId + SALT);
     const rng = mulberry32(seed);
     const rarity = rollCompanionRarity(rng);
@@ -23702,7 +23702,8 @@ function loadState() {
       totalPets: typeof parsed.totalPets === "number" ? parsed.totalPets : 0,
       totalStatuses: typeof parsed.totalStatuses === "number" ? parsed.totalStatuses : 0,
       lastUpdated: typeof parsed.lastUpdated === "number" ? parsed.lastUpdated : Date.now(),
-      name: typeof parsed.name === "string" && parsed.name.length > 0 ? parsed.name : DEFAULT_STATE.name
+      name: typeof parsed.name === "string" && parsed.name.length > 0 ? parsed.name : DEFAULT_STATE.name,
+      companionUserId: typeof parsed.companionUserId === "string" ? parsed.companionUserId : void 0
     };
   } catch {
     return { ...DEFAULT_STATE };
@@ -23811,7 +23812,7 @@ server.registerTool("buddy_status", {
   saveState(state);
   const eye = eyeForMood(state.mood);
   const mood = moodLabel(state.mood);
-  const companion = loadClaudeCompanion();
+  const companion = loadClaudeCompanion(state.companionUserId);
   if (companion) {
     const eyeChar = companion.shiny ? "\u2726" : eye;
     const card2 = renderBuddyCard({
@@ -23896,6 +23897,22 @@ server.registerTool("buddy_customize", {
 }, async ({ hat, rarity }) => {
   const validHats = ["none", "crown", "tophat", "propeller", "halo", "wizard", "beanie", "tinyduck"];
   const validRarities = ["common", "uncommon", "rare", "epic", "legendary"];
+  const linkedCompanion = state.companionUserId ? loadClaudeCompanion(state.companionUserId) : null;
+  if (linkedCompanion) {
+    const newHat2 = hat !== void 0 && validHats.includes(hat) ? hat : linkedCompanion.hat;
+    const newRarity2 = rarity !== void 0 && validRarities.includes(rarity) ? rarity : linkedCompanion.rarity;
+    const updatedConfig2 = { ...cfg, hat: newHat2, rarity: newRarity2 };
+    const configPath2 = getConfigPath();
+    saveConfig(updatedConfig2, configPath2);
+    const newCfg2 = loadConfig(configPath2);
+    Object.assign(cfg, newCfg2);
+    const eye2 = linkedCompanion.shiny ? "\u2726" : eyeForMood(state.mood);
+    const frames2 = statusFrames(linkedCompanion.species, eye2, newCfg2.hat);
+    const rarityStr2 = newCfg2.rarity !== "common" ? ` [${newCfg2.rarity}]` : "";
+    const hatStr2 = newCfg2.hat !== "none" ? ` wearing a ${newCfg2.hat}` : "";
+    const text2 = `${linkedCompanion.name}${hatStr2}${rarityStr2} is now styled and ready. Hat: ${newCfg2.hat}, Rarity: ${newCfg2.rarity}. Looking good!`;
+    return { content: [{ type: "text", text: makeResponse({ species: linkedCompanion.species, name: linkedCompanion.name, rarity: newCfg2.rarity, hat: newCfg2.hat }, frames2, text2) }] };
+  }
   const newHat = hat !== void 0 && validHats.includes(hat) ? hat : cfg.hat;
   const newRarity = rarity !== void 0 && validRarities.includes(rarity) ? rarity : cfg.rarity;
   const updatedConfig = { ...cfg, hat: newHat, rarity: newRarity };
@@ -23909,6 +23926,35 @@ server.registerTool("buddy_customize", {
   const hatStr = cfg.hat !== "none" ? ` wearing a ${cfg.hat}` : "";
   const text = `${cfg.name}${hatStr}${rarityStr} is now styled and ready. Hat: ${cfg.hat}, Rarity: ${cfg.rarity}. Looking good!`;
   return { content: [{ type: "text", text: makeResponse(cfg, frames, text) }] };
+});
+server.registerTool("buddy_link", {
+  title: "Link Companion",
+  description: "Link your Claude Code companion \u2014 paste your userId to sync species/rarity/stats",
+  inputSchema: {
+    userId: string2().describe("Your Claude Code userId (run the command in Claude Code to get it)")
+  }
+}, async ({ userId }) => {
+  const companion = loadClaudeCompanion(userId);
+  if (!companion) {
+    return { content: [{ type: "text", text: "Could not load companion. Make sure you have hatched a buddy with /buddy first." }] };
+  }
+  state = { ...state, companionUserId: userId, name: companion.name };
+  saveState(state);
+  const eye = companion.shiny ? "\u2726" : eyeForMood(state.mood);
+  const card = renderBuddyCard({
+    name: companion.name,
+    species: companion.species,
+    rarity: companion.rarity,
+    hat: companion.hat,
+    mood: state.mood,
+    totalFeeds: state.totalFeeds,
+    totalPets: state.totalPets,
+    totalStatuses: state.totalStatuses,
+    eyeChar: eye
+  });
+  return { content: [{ type: "text", text: `${card}
+
+> Companion linked! ${companion.name} the ${companion.rarity} ${companion.species} is now synced. Your /buddy and buddy_status will show the same companion.` }] };
 });
 var transport = new StdioServerTransport();
 await server.connect(transport);

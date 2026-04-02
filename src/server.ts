@@ -70,7 +70,7 @@ server.registerTool(
     saveState(state)
     const eye = eyeForMood(state.mood)
     const mood = moodLabel(state.mood)
-    const companion = loadClaudeCompanion()
+    const companion = loadClaudeCompanion(state.companionUserId)
     if (companion) {
       const eyeChar = companion.shiny ? '✦' : eye
       const card = renderBuddyCard({
@@ -176,12 +176,30 @@ server.registerTool(
   async ({ hat, rarity }) => {
     const validHats = ['none', 'crown', 'tophat', 'propeller', 'halo', 'wizard', 'beanie', 'tinyduck']
     const validRarities = ['common', 'uncommon', 'rare', 'epic', 'legendary']
+    // Check if we have a linked companion
+    const linkedCompanion = state.companionUserId ? loadClaudeCompanion(state.companionUserId) : null
+    if (linkedCompanion) {
+      // Customize linked companion: update tamacodechi config overrides only
+      const newHat = hat !== undefined && validHats.includes(hat) ? hat : linkedCompanion.hat
+      const newRarity = rarity !== undefined && validRarities.includes(rarity) ? rarity : linkedCompanion.rarity
+      const updatedConfig = { ...cfg, hat: newHat as typeof cfg.hat, rarity: newRarity as typeof cfg.rarity }
+      const configPath = getConfigPath()
+      saveConfig(updatedConfig, configPath)
+      const newCfg = loadConfig(configPath)
+      Object.assign(cfg, newCfg)
+      const eye = linkedCompanion.shiny ? '✦' : eyeForMood(state.mood)
+      const frames = statusFrames(linkedCompanion.species as Species, eye, newCfg.hat)
+      const rarityStr = newCfg.rarity !== 'common' ? ` [${newCfg.rarity}]` : ''
+      const hatStr = newCfg.hat !== 'none' ? ` wearing a ${newCfg.hat}` : ''
+      const text = `${linkedCompanion.name}${hatStr}${rarityStr} is now styled and ready. Hat: ${newCfg.hat}, Rarity: ${newCfg.rarity}. Looking good!`
+      return { content: [{ type: 'text', text: makeResponse({ species: linkedCompanion.species as Species, name: linkedCompanion.name, rarity: newCfg.rarity, hat: newCfg.hat }, frames, text) }] }
+    }
+    // Fallback to tamacodechi-only config
     const newHat = hat !== undefined && validHats.includes(hat) ? hat : cfg.hat
     const newRarity = rarity !== undefined && validRarities.includes(rarity) ? rarity : cfg.rarity
     const updatedConfig = { ...cfg, hat: newHat as typeof cfg.hat, rarity: newRarity as typeof cfg.rarity }
     const configPath = getConfigPath()
     saveConfig(updatedConfig, configPath)
-    // Re-load config so server uses new values
     const newCfg = loadConfig(configPath)
     Object.assign(cfg, newCfg)
     const eye = eyeForMood(state.mood)
@@ -190,6 +208,42 @@ server.registerTool(
     const hatStr = cfg.hat !== 'none' ? ` wearing a ${cfg.hat}` : ''
     const text = `${cfg.name}${hatStr}${rarityStr} is now styled and ready. Hat: ${cfg.hat}, Rarity: ${cfg.rarity}. Looking good!`
     return { content: [{ type: 'text', text: makeResponse(cfg, frames, text) }] }
+  },
+)
+
+// buddy link: link your Claude Code companion by userId
+// To find your userId: open Claude Code and run: /claude-code-eval console.log(getGlobalConfig().oauthAccount?.accountUuid)
+server.registerTool(
+  'buddy_link',
+  {
+    title: 'Link Companion',
+    description: 'Link your Claude Code companion — paste your userId to sync species/rarity/stats',
+    inputSchema: {
+      userId: z.string().describe('Your Claude Code userId (run the command in Claude Code to get it)'),
+    },
+  },
+  async ({ userId }) => {
+    // Verify by loading companion with this userId
+    const companion = loadClaudeCompanion(userId)
+    if (!companion) {
+      return { content: [{ type: 'text', text: 'Could not load companion. Make sure you have hatched a buddy with /buddy first.' }] }
+    }
+    // Save userId to state
+    state = { ...state, companionUserId: userId, name: companion.name }
+    saveState(state)
+    const eye = companion.shiny ? '✦' : eyeForMood(state.mood)
+    const card = renderBuddyCard({
+      name: companion.name,
+      species: companion.species as Species,
+      rarity: companion.rarity,
+      hat: companion.hat as Hat,
+      mood: state.mood,
+      totalFeeds: state.totalFeeds,
+      totalPets: state.totalPets,
+      totalStatuses: state.totalStatuses,
+      eyeChar: eye,
+    })
+    return { content: [{ type: 'text', text: `${card}\n\n> Companion linked! ${companion.name} the ${companion.rarity} ${companion.species} is now synced. Your /buddy and buddy_status will show the same companion.` }] }
   },
 )
 
